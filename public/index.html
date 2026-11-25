@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Receptor Vehicular - CarDash & Radio Argentina</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Soporte oficial de streaming HLS (el mismo que usa urbanaplayfm.com) -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   
   <style>
@@ -36,21 +35,21 @@
     .vol-display { font-size: 13px; color: #94a3b8; margin-top: 10px; }
     .status-text { font-size: 12px; font-weight: bold; margin-top: 5px; color: #10b981; }
     .status-text.tuning { color: #f59e0b; }
-    .source-tag { font-size: 11px; color: #38bdf8; margin-top: 4px; }
+    .source-tag { font-size: 11px; color: #38bdf8; margin-top: 4px; font-weight: bold; }
 
     .yt-frame-wrapper { border-radius: 10px; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16/9; margin-top: 12px; }
     iframe { width: 100%; height: 100%; border: none; }
 
     .radio-box { height: 120px; background: #0d111c; border-radius: 10px; margin-top: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; color: #64748b; border: 1px dashed #242d45; text-align: center; padding: 10px; }
 
-    /* REPRODUCTOR DE RESPALDO YOUTUBE LIVE (SOLO AUDIO, 100% INVISIBLE) */
+    /* REPRODUCTOR EN VIVO DE RADIO EN MODO SOLO AUDIO (100% INVISIBLE) */
     .hidden-live-audio {
       position: absolute;
       top: -3000px;
       left: -3000px;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
+      width: 200px;
+      height: 200px;
+      opacity: 0.001;
       pointer-events: none;
     }
   </style>
@@ -59,7 +58,7 @@
 
   <div class="container">
     <h1>Receptor Vehicular Sincronizado</h1>
-    <div class="subtitle">Multimedia CarDash & Stereo FM Nacional Multi-Búsqueda</div>
+    <div class="subtitle">Multimedia CarDash & Stereo FM con Buscador Web en Vivo</div>
 
     <div id="unlockBtn" class="unlock-banner" onclick="unlockAudio()">
       🔊 HACÉ CLICK AQUÍ PARA HABILITAR EL AUDIO EN EL NAVEGADOR
@@ -71,7 +70,7 @@
     </div>
 
     <div class="grid">
-      <!-- TARJETA CARDASH (YOUTUBE MULTIMEDIA) -->
+      <!-- CARDASH (YOUTUBE MULTIMEDIA) -->
       <div id="cardashCard" class="card">
         <div>
           <div class="card-title">
@@ -87,7 +86,7 @@
         </div>
       </div>
 
-      <!-- TARJETA STEREO FM NACIONAL -->
+      <!-- STEREO FM NACIONAL -->
       <div id="radioCard" class="card">
         <div>
           <div class="card-title">
@@ -100,8 +99,8 @@
           <div class="source-tag" id="radioSourceText"></div>
         </div>
         <div class="radio-box" id="radioWaveBox">
-          📻 Sintonizador Oficial Argentino<br>
-          <small style="color:#475569; margin-top:4px;">Web Directa (HLS) + En vivo</small>
+          📻 Sintonizador en Vivo Inteligente<br>
+          <small style="color:#64748b; margin-top:4px;">Rastreo web en tiempo real</small>
         </div>
       </div>
     </div>
@@ -109,7 +108,7 @@
 
   <audio id="nativeRadioAudio" preload="auto"></audio>
 
-  <!-- Contenedor oculto para transmisiones en vivo solo audio -->
+  <!-- YouTube oculto para emisoras transmitiendo en vivo (Solo Audio) -->
   <div class="hidden-live-audio">
     <div id="radio-yt-player"></div>
   </div>
@@ -117,99 +116,15 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // BASE DE DATOS EXTRAÍDA DIRECTAMENTE DE SUS PÁGINAS OFICIALES Y SUS YOUTUBE LIVE
-    const DIAL_ARGENTINO = {
-      // URBANA PLAY 104.3 (Extraído de https://urbanaplayfm.com/radio/)
-      "caba_urbanaplay": {
-        name: "Urbana Play 104.3",
-        sources: [
-          { type: "hls",   url: "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAY_SC.m3u8" },
-          { type: "audio", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAY_SC.mp3" },
-          { type: "ytlive", id: "0w4pC8sF2_A" } // Live Oficial Urbana Play (Solo Audio)
-        ]
-      },
-
-      // ROSARIO (FM VIDA 97.9 - Televisión Litoral / Rosario3)
-      "ros_vida": {
-        name: "FM Vida Rosario 97.9",
-        sources: [
-          { type: "audio", url: "https://stream.zeno.fm/f8y0u69u21zuv" },
-          { type: "audio", url: "https://streaming.televisonlitoral.com/fmvida.mp3" },
-          { type: "ytlive", id: "mJb4v7bXmD8" } // Canal Oficial Televisión Litoral
-        ]
-      },
-
-      // ASPEN 102.3
-      "caba_aspen": {
-        name: "Aspen 102.3",
-        sources: [
-          { type: "audio", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN.mp3" }
-        ]
-      },
-
-      // LA 100 (99.9 - Cienradios)
-      "caba_la100": {
-        name: "La 100 (99.9)",
-        sources: [
-          { type: "hls",   url: "https://stream.cienradios.com/la100.m3u8" },
-          { type: "audio", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/LA100.mp3" },
-          { type: "ytlive", id: "5qap5aO4i9A" } // Live La 100
-        ]
-      },
-
-      // MEGA 98.3 (Puro Rock Nacional)
-      "caba_mega": {
-        name: "Mega 98.3 Puro Rock",
-        sources: [
-          { type: "audio", url: "https://stream.indalo.com.ar/mega.mp3" },
-          { type: "audio", url: "https://stream.zeno.fm/2sqqg54117zuv" },
-          { type: "ytlive", id: "9bZkp7q19f0" }
-        ]
-      },
-
-      // POP RADIO 101.5
-      "caba_pop": {
-        name: "Pop Radio 101.5",
-        sources: [
-          { type: "audio", url: "https://stream.indalo.com.ar/pop.mp3" },
-          { type: "audio", url: "https://stream.zeno.fm/0tqqg54117zuv" }
-        ]
-      },
-
-      // CADENA 3 CÓRDOBA
-      "cba_cadena3": {
-        name: "Cadena 3 Córdoba 100.9",
-        sources: [
-          { type: "audio", url: "https://streaming.cadena3.com/cadena3.mp3" },
-          { type: "audio", url: "https://stream.zeno.fm/1r6qy54117zuv" }
-        ]
-      },
-
-      // RADIO MITRE AM 790
-      "caba_mitre": {
-        name: "Radio Mitre AM 790",
-        sources: [
-          { type: "hls",   url: "https://stream.cienradios.com/mitre.m3u8" },
-          { type: "audio", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE.mp3" },
-          { type: "ytlive", id: "M1fJqE_0sF0" }
-        ]
-      },
-
-      // LOS 40
-      "caba_los40": {
-        name: "Los 40 Argentina",
-        sources: [
-          { type: "audio", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC.mp3" }
-        ]
-      },
-
-      // RADIO DISNEY
-      "caba_disney": {
-        name: "Radio Disney 94.3",
-        sources: [
-          { type: "audio", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC.mp3" }
-        ]
-      }
+    const NOMBRES_ESTACIONES = {
+      "caba_urbanaplay": "Urbana Play 104.3",
+      "ros_vida": "FM Vida Rosario 97.9",
+      "caba_aspen": "Aspen 102.3",
+      "caba_la100": "La 100 (99.9)",
+      "caba_mega": "Mega 98.3 Puro Rock",
+      "caba_pop": "Pop Radio 101.5",
+      "cba_cadena3": "Cadena 3 Córdoba 100.9",
+      "caba_mitre": "Radio Mitre AM 790"
     };
 
     // GENERADOR DE RUIDO DE ESTÁTICA ANALÓGICA ("ashhh")
@@ -279,9 +194,8 @@
 
     let currentLoadedCardashId = "";
     let currentStationId = "";
-    let currentSourceIndex = 0;
+    let resolvedData = null;
     let tuningTimer = null;
-    let watchdogTimer = null;
     let isTuning = false;
 
     const radioAudio = document.getElementById('nativeRadioAudio');
@@ -309,14 +223,13 @@
     }
 
     function onYouTubeIframeAPIReady() {
-      // CarDash Video
       cardashYt = new YT.Player('cardash-yt-player', {
         height: '100%',
         width: '100%',
         playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1 }
       });
 
-      // Respaldo de Radio (Solo Audio Oculto)
+      // YouTube de radio (Solo Audio)
       radioYt = new YT.Player('radio-yt-player', {
         height: '200',
         width: '200',
@@ -324,10 +237,8 @@
         events: {
           'onStateChange': (e) => {
             if (e.data === YT.PlayerState.PLAYING) {
-              if (watchdogTimer) clearTimeout(watchdogTimer);
               radioStatus.innerText = "En vivo";
               radioStatus.className = "status-text";
-              radioSourceText.innerText = "Señal en Vivo (Solo Audio)";
             }
           }
         }
@@ -335,7 +246,6 @@
     }
 
     function stopAllRadioPlayback() {
-      if (watchdogTimer) clearTimeout(watchdogTimer);
       if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
@@ -347,81 +257,45 @@
       }
     }
 
-    // MULTI-BÚSQUEDA INTELIGENTE
-    function playStationSource(station, index, volume) {
-      if (!station || !station.sources || index >= station.sources.length) {
-        radioStatus.innerText = "Sin señal disponible";
-        radioSourceText.innerText = "Probadas todas las opciones";
+    // ACTIVAR LA SEÑAL ENCONTRADA EN EL RASTREO
+    function playResolvedStream(res, volume) {
+      if (!res) {
+        radioStatus.innerText = "Sin señal";
         return;
       }
 
-      currentSourceIndex = index;
-      const src = station.sources[index];
-      radioSourceText.innerText = `Sintonizando fuente (${index + 1}/${station.sources.length})...`;
+      radioSourceText.innerText = res.source || "Señal encontrada";
 
-      // Si no emite sonido en 2.8 segundos, salta a la siguiente fuente
-      if (watchdogTimer) clearTimeout(watchdogTimer);
-      watchdogTimer = setTimeout(() => {
-        console.warn(`Fuente ${index + 1} demoró demasiado. Saltando a la siguiente...`);
-        playStationSource(station, index + 1, volume);
-      }, 3000);
-
-      // CASO 1: HLS (.m3u8 de la página oficial)
-      if (src.type === "hls" && Hls.isSupported()) {
-        if (hlsInstance) hlsInstance.destroy();
-        hlsInstance = new Hls({ enableWorker: true });
-        hlsInstance.loadSource(src.url);
-        hlsInstance.attachMedia(radioAudio);
-
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          radioAudio.volume = volume / 100;
-          if (audioUnlocked && volume > 0) {
-            radioAudio.play().then(() => {
-              if (watchdogTimer) clearTimeout(watchdogTimer);
-              radioStatus.innerText = "En vivo";
-              radioStatus.className = "status-text";
-              radioSourceText.innerText = "Web Oficial (HLS)";
-            }).catch(() => playStationSource(station, index + 1, volume));
-          }
-        });
-
-        hlsInstance.on(Hls.Events.ERROR, () => {
-          playStationSource(station, index + 1, volume);
-        });
-      }
-      // CASO 2: AUDIO DIRECTO (MP3 / CDN)
-      else if (src.type === "audio") {
-        radioAudio.src = src.url;
-        radioAudio.volume = volume / 100;
-        radioAudio.load();
-
-        if (audioUnlocked && volume > 0) {
-          radioAudio.play().then(() => {
-            if (watchdogTimer) clearTimeout(watchdogTimer);
-            radioStatus.innerText = "En vivo";
-            radioStatus.className = "status-text";
-            radioSourceText.innerText = "Señal Web Oficial";
-          }).catch(() => {
-            playStationSource(station, index + 1, volume);
-          });
-        }
-      }
-      // CASO 3: YOUTUBE LIVE (SOLO AUDIO OCULTO)
-      else if (src.type === "ytlive" && radioYt && radioYt.loadVideoById) {
+      if (res.type === 'youtube' && radioYt && radioYt.loadVideoById) {
         radioAudio.pause();
         radioAudio.src = "";
-        radioYt.loadVideoById(src.id);
+        radioYt.loadVideoById(res.id);
         radioYt.setVolume(volume);
         if (audioUnlocked) radioYt.playVideo();
+      } 
+      else if (res.type === 'hls' && Hls.isSupported()) {
+        if (hlsInstance) hlsInstance.destroy();
+        hlsInstance = new Hls({ enableWorker: true });
+        hlsInstance.loadSource(res.url);
+        hlsInstance.attachMedia(radioAudio);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          radioAudio.volume = volume / 100;
+          if (audioUnlocked && volume > 0) radioAudio.play().catch(() => {});
+        });
+        radioStatus.innerText = "En vivo (HLS Web)";
+      } 
+      else {
+        // Audio normal (MP3 / Stream)
+        radioAudio.src = res.url;
+        radioAudio.volume = volume / 100;
+        radioAudio.load();
+        if (audioUnlocked && volume > 0) {
+          radioAudio.play().then(() => {
+            radioStatus.innerText = "En vivo";
+          }).catch(() => {});
+        }
       }
     }
-
-    radioAudio.onerror = function() {
-      const station = DIAL_ARGENTINO[currentStationId];
-      if (station && !isTuning) {
-        playStationSource(station, currentSourceIndex + 1, radioAudio.volume * 100);
-      }
-    };
 
     async function pollStatus() {
       if (!currentUserId) return;
@@ -463,7 +337,7 @@
           }
         }
 
-        // --- 2. RADIO FM STEREO (CON MULTI-BÚSQUEDA Y PROXIMIDAD) ---
+        // --- 2. RADIO FM CON BÚSQUEDA WEB EN TIEMPO REAL ---
         document.getElementById('radioVol').innerText = `Volumen: ${radio.volume}%`;
 
         if (activeSys === 'radio' && radio.isPlaying) {
@@ -471,33 +345,45 @@
           if (currentStationId !== radio.stationId) {
             currentStationId = radio.stationId;
             isTuning = true;
+            resolvedData = null;
 
             stopAllRadioPlayback();
 
+            // Iniciar estática analógica "ashhh"
             if (audioUnlocked) staticEngine.start(radio.volume / 100);
 
-            radioStatus.innerText = "Sintonizando dial... (5s)";
+            radioStatus.innerText = "Buscando transmisión web en vivo... (5s)";
             radioStatus.className = "status-text tuning";
+            radioSourceText.innerText = "Rastreando páginas y directos...";
 
-            const station = DIAL_ARGENTINO[radio.stationId] || DIAL_ARGENTINO["caba_urbanaplay"];
-            document.getElementById('radioStationTitle').innerText = station.name;
-            radioSourceText.innerText = "Buscando mejor frecuencia...";
+            const nom = NOMBRES_ESTACIONES[radio.stationId] || radio.stationId.toUpperCase();
+            document.getElementById('radioStationTitle').innerText = nom;
+
+            // RASTREO EN VIVO: Se ejecuta inmediatamente en segundo plano
+            fetch(`/api/resolve-radio/${radio.stationId}`)
+              .then(r => r.json())
+              .then(d => { resolvedData = d; })
+              .catch(() => {});
 
             if (tuningTimer) clearTimeout(tuningTimer);
 
+            // Al cumplirse los 5 segundos de estática exactos:
             tuningTimer = setTimeout(() => {
               isTuning = false;
-              staticEngine.stop();
-              playStationSource(station, 0, radio.volume);
+              staticEngine.stop(); // Se apaga la estática analógica
+
+              // Activa la transmisión que encontró en la web
+              playResolvedStream(resolvedData, radio.volume);
             }, 5000);
           }
 
-          // PROXIMIDAD ESTRICTA (0% = SILENCIO ABSOLUTO)
+          // VOLUMEN POR PROXIMIDAD
           if (isTuning) {
             staticEngine.setVolume(radio.volume);
           } else {
             const volFrac = Math.max(0, Math.min(1, radio.volume / 100));
 
+            // Silencio absoluto si te alejás caminando
             if (radio.volume <= 0) {
               radioAudio.muted = true;
               if (radioYt && radioYt.setVolume) radioYt.setVolume(0);
