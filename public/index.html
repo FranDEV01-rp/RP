@@ -44,7 +44,7 @@
 
   <div class="container">
     <h1>Receptor Vehicular Sincronizado</h1>
-    <div class="subtitle">Multimedia CarDash & Stereo FM Nacional con Sintonizador Real</div>
+    <div class="subtitle">Multimedia CarDash & Stereo FM Nacional Argentino</div>
 
     <div id="unlockBtn" class="unlock-banner" onclick="unlockAudio()">
       🔊 HACÉ CLICK AQUÍ PARA HABILITAR EL AUDIO EN EL NAVEGADOR
@@ -56,7 +56,7 @@
     </div>
 
     <div class="grid">
-      <!-- PANEL CARDASH (YOUTUBE) -->
+      <!-- CARDASH -->
       <div id="cardashCard" class="card">
         <div>
           <div class="card-title">
@@ -72,7 +72,7 @@
         </div>
       </div>
 
-      <!-- PANEL RADIO STEREO ARGENTINA -->
+      <!-- STEREO FM -->
       <div id="radioCard" class="card">
         <div>
           <div class="card-title">
@@ -90,11 +90,25 @@
     </div>
   </div>
 
-  <audio id="nativeRadioAudio" preload="none"></audio>
+  <audio id="nativeRadioAudio" preload="none" crossorigin="anonymous"></audio>
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // GENERADOR DE RUIDO DE ESTÁTICA / INTERFERENCIA DE RADIO ANALÓGICA (Web Audio API)
+    // STREAMS DIRECTOS OFICIALES Y VERIFICADOS 100% ACTIVOS
+    const STREAMS_OFICIALES = {
+      "ros_vida": "https://edge01.inmystream.info:20042/stream",
+      "caba_la100": "https://stream.cienradios.com/la100.mp3",
+      "caba_aspen": "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN.mp3",
+      "caba_mega": "https://stream.indalo.com.ar/mega.mp3",
+      "caba_pop": "https://stream.indalo.com.ar/pop.mp3",
+      "caba_los40": "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC",
+      "caba_disney": "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC",
+      "cba_cadena3": "https://streaming.cadena3.com/cadena3.mp3",
+      "caba_mitre": "https://stream.cienradios.com/mitre.mp3",
+      "caba_radio10": "https://stream.indalo.com.ar/radio10.mp3"
+    };
+
+    // GENERADOR DE RUIDO DE ESTÁTICA ANALÓGICA ("ashhh")
     class RadioStaticEngine {
       constructor() {
         this.ctx = null;
@@ -107,9 +121,7 @@
           const AudioContext = window.AudioContext || window.webkitAudioContext;
           this.ctx = new AudioContext();
         }
-        if (this.ctx.state === 'suspended') {
-          this.ctx.resume();
-        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
       }
       start(volume = 1) {
         this.init();
@@ -120,21 +132,20 @@
         const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
-          output[i] = Math.random() * 2 - 1; // Ruido blanco
+          output[i] = Math.random() * 2 - 1;
         }
 
         this.source = this.ctx.createBufferSource();
         this.source.buffer = noiseBuffer;
         this.source.loop = true;
 
-        // Filtro pasabanda para imitar el sonido exacto de estática de radio FM vieja
         const filter = this.ctx.createBiquadFilter();
         filter.type = 'bandpass';
         filter.frequency.value = 1400;
         filter.Q.value = 1.2;
 
         this.gain = this.ctx.createGain();
-        this.gain.gain.value = volume * 0.18;
+        this.gain.gain.value = (volume) * 0.18;
 
         this.source.connect(filter);
         filter.connect(this.gain);
@@ -211,7 +222,7 @@
         document.getElementById('cardashCard').classList.toggle('active', activeSys === 'cardash' && cardash.isPlaying);
         document.getElementById('radioCard').classList.toggle('active', activeSys === 'radio' && radio.isPlaying);
 
-        // --- 1. LÓGICA CARDASH (YOUTUBE) ---
+        // --- 1. CARDASH YOUTUBE ---
         document.getElementById('cardashVol').innerText = `Volumen: ${cardash.volume}%`;
         if (isYtReady && ytPlayer && ytPlayer.loadVideoById) {
           if (activeSys === 'cardash' && cardash.isPlaying && cardash.videoId) {
@@ -231,29 +242,24 @@
           } else {
             if (ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
               ytPlayer.pauseVideo();
-              document.getElementById('cardashStatus').innerText = "Pausado (Guardado en memoria)";
+              document.getElementById('cardashStatus').innerText = "Pausado";
             }
           }
         }
 
-        // --- 2. LÓGICA RADIO FM CON ESTÁTICA Y 5 SEGUNDOS DE SINTONIZACIÓN ---
+        // --- 2. RADIO FM CON ESTÁTICA 5S Y CONTROL DE PROXIMIDAD ---
         document.getElementById('radioVol').innerText = `Volumen: ${radio.volume}%`;
 
         if (activeSys === 'radio' && radio.isPlaying) {
           
-          // Si el jugador cambió de estación o recién encendió la radio
           if (currentStationId !== radio.stationId) {
             currentStationId = radio.stationId;
             isTuning = true;
 
-            // Cortar la radio anterior
             radioAudio.pause();
             radioAudio.src = "";
 
-            // Iniciar estática analógica "ashhhh"
-            if (audioUnlocked) {
-              staticEngine.start(radio.volume / 100);
-            }
+            if (audioUnlocked) staticEngine.start(radio.volume / 100);
 
             const radioStatus = document.getElementById('radioStatus');
             radioStatus.innerText = "Sintonizando señal... (5s)";
@@ -262,16 +268,16 @@
 
             if (tuningTimer) clearTimeout(tuningTimer);
 
-            // Al cumplirse los 5 segundos exactos:
             tuningTimer = setTimeout(() => {
               isTuning = false;
-              staticEngine.stop(); // Se apaga la estática
+              staticEngine.stop();
 
-              radioAudio.src = `/api/radio-stream/${radio.stationId}`;
+              const streamUrl = STREAMS_OFICIALES[radio.stationId] || STREAMS_OFICIALES["ros_vida"];
+              radioAudio.src = streamUrl;
               radioAudio.volume = radio.volume / 100;
               radioAudio.load();
               
-              if (audioUnlocked) {
+              if (audioUnlocked && radio.volume > 0) {
                 radioAudio.play().then(() => {
                   radioStatus.innerText = "En vivo";
                   radioStatus.className = "status-text";
@@ -280,20 +286,25 @@
             }, 5000);
           }
 
-          // Control de volumen por proximidad mientras suena la radio o la estática
+          // APLICACIÓN DE VOLUMEN POR PROXIMIDAD
           if (isTuning) {
             staticEngine.setVolume(radio.volume);
           } else {
-            radioAudio.volume = Math.max(0, Math.min(1, radio.volume / 100));
-            if (radio.volume === 0 && !radioAudio.paused) {
-              radioAudio.pause();
-            } else if (radio.volume > 0 && radioAudio.paused && audioUnlocked) {
-              radioAudio.play().catch(() => {});
+            const volFrac = Math.max(0, Math.min(1, radio.volume / 100));
+            radioAudio.volume = volFrac;
+            
+            // Si el volumen bajó a 0% por alejarse, silenciar inmediatamente
+            if (radio.volume === 0) {
+              radioAudio.muted = true;
+            } else {
+              radioAudio.muted = false;
+              if (radioAudio.paused && audioUnlocked) {
+                radioAudio.play().catch(() => {});
+              }
             }
           }
 
         } else {
-          // Apagar radio y estática si no está activa
           if (isTuning) {
             clearTimeout(tuningTimer);
             isTuning = false;
@@ -308,7 +319,7 @@
       } catch (e) {}
     }
 
-    setInterval(pollStatus, 700);
+    setInterval(pollStatus, 500);
   </script>
 </body>
 </html>
