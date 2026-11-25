@@ -90,26 +90,127 @@
     </div>
   </div>
 
-  <!-- Audio nativo SIN crossorigin para que NUNCA sea bloqueado por el navegador -->
   <audio id="nativeRadioAudio" preload="none"></audio>
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // STREAMS OFICIALES DIRECTOS VERIFICADOS (100% FUNCIONALES EN NAVEGADOR)
-    const STREAMS_OFICIALES = {
-      // Rosario
-      "ros_vida": "https://stream.zeno.fm/g2e6m1qqu3quv", // FM Vida 97.9 Rosario CDN Directo
-      // Nacional / CABA
-      "caba_la100": "https://playerservices.streamtheworld.com/api/livestream-redirect/LA100.mp3",
-      "caba_aspen": "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN.mp3",
-      "caba_mega": "https://playerservices.streamtheworld.com/api/livestream-redirect/MEGA.mp3",
-      "caba_pop": "https://stream.indalo.com.ar/pop.mp3",
-      "caba_los40": "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC.mp3",
-      "caba_disney": "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC.mp3",
-      // Córdoba y AMs
-      "cba_cadena3": "https://streaming.cadena3.com/cadena3.mp3",
-      "caba_mitre": "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE.mp3",
-      "caba_radio10": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO10.mp3"
+    // STREAMS 100% PUERTO 443 HTTPS SEGURO (CON CANAL PRINCIPAL Y BACKUP)
+    const DIAL_ARGENTINO = {
+      // ROSARIO
+      "ros_vida": {
+        name: "FM Vida Rosario 97.9",
+        urls: [
+          "https://streaming.televisonlitoral.com/fmvida.mp3",
+          "https://stream.zeno.fm/f8y0u69u21zuv"
+        ]
+      },
+      "ros_radio2": {
+        name: "Radio 2 Rosario 90.1",
+        urls: [
+          "https://streaming.televisonlitoral.com/radio2.mp3"
+        ]
+      },
+      // CABA & NACIONAL
+      "caba_aspen": {
+        name: "Aspen 102.3",
+        urls: [
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN.mp3"
+        ]
+      },
+      "caba_la100": {
+        name: "La 100 99.9",
+        urls: [
+          "https://stream.cienradios.com/la100.mp3",
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/LA100.mp3"
+        ]
+      },
+      "caba_mega": {
+        name: "Mega 98.3 Puro Rock",
+        urls: [
+          "https://stream.indalo.com.ar/mega.mp3"
+        ]
+      },
+      "caba_pop": {
+        name: "Pop Radio 101.5",
+        urls: [
+          "https://stream.indalo.com.ar/pop.mp3"
+        ]
+      },
+      "caba_los40": {
+        name: "Los 40 Argentina",
+        urls: [
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC.mp3"
+        ]
+      },
+      "caba_disney": {
+        name: "Radio Disney 94.3",
+        urls: [
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC.mp3"
+        ]
+      },
+      "caba_rockpop": {
+        name: "Rock & Pop 95.9",
+        urls: [
+          "https://stream.rockandpop.com.ar/rockandpop.mp3"
+        ]
+      },
+      "caba_one": {
+        name: "Radio One 103.7",
+        urls: [
+          "https://stream.indalo.com.ar/one.mp3"
+        ]
+      },
+      "caba_urbanaplay": {
+        name: "Urbana Play 104.3",
+        urls: [
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAY_SC.mp3"
+        ]
+      },
+      "caba_vale": {
+        name: "Vale 97.5",
+        urls: [
+          "https://stream.indalo.com.ar/vale.mp3"
+        ]
+      },
+      // CÓRDOBA
+      "cba_cadena3": {
+        name: "Cadena 3 Córdoba 100.9",
+        urls: [
+          "https://streaming.cadena3.com/cadena3.mp3"
+        ]
+      },
+      "cba_lapopu": {
+        name: "La Popu Córdoba 92.3",
+        urls: [
+          "https://streaming.cadena3.com/lapopu.mp3"
+        ]
+      },
+      // AMs NACIONALES
+      "caba_mitre": {
+        name: "Radio Mitre AM 790",
+        urls: [
+          "https://stream.cienradios.com/mitre.mp3",
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE.mp3"
+        ]
+      },
+      "caba_radio10": {
+        name: "Radio 10 AM 710",
+        urls: [
+          "https://stream.indalo.com.ar/radio10.mp3"
+        ]
+      },
+      "am_continental": {
+        name: "Continental AM 590",
+        urls: [
+          "https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL.mp3"
+        ]
+      },
+      "am_rivadavia": {
+        name: "Radio Rivadavia AM 630",
+        urls: [
+          "https://stream.zeno.fm/s4930d07r7zuv"
+        ]
+      }
     };
 
     // GENERADOR DE RUIDO DE ESTÁTICA ANALÓGICA ("ashhh")
@@ -178,6 +279,7 @@
 
     let currentLoadedYtId = "";
     let currentStationId = "";
+    let currentUrlIndex = 0;
     let tuningTimer = null;
     let isTuning = false;
 
@@ -211,6 +313,18 @@
       });
     }
 
+    // Sistema de auto-recuperación si una URL falla
+    radioAudio.onerror = function() {
+      const station = DIAL_ARGENTINO[currentStationId];
+      if (station && station.urls.length > currentUrlIndex + 1) {
+        currentUrlIndex++;
+        console.log("Probando enlace alternativo:", station.urls[currentUrlIndex]);
+        radioAudio.src = station.urls[currentUrlIndex];
+        radioAudio.load();
+        if (audioUnlocked) radioAudio.play().catch(() => {});
+      }
+    };
+
     async function pollStatus() {
       if (!currentUserId) return;
 
@@ -226,7 +340,7 @@
         document.getElementById('cardashCard').classList.toggle('active', activeSys === 'cardash' && cardash.isPlaying);
         document.getElementById('radioCard').classList.toggle('active', activeSys === 'radio' && radio.isPlaying);
 
-        // --- 1. CARDASH (YOUTUBE) ---
+        // --- 1. CARDASH YOUTUBE ---
         document.getElementById('cardashVol').innerText = `Volumen: ${cardash.volume}%`;
         if (isYtReady && ytPlayer && ytPlayer.loadVideoById) {
           if (activeSys === 'cardash' && cardash.isPlaying && cardash.videoId) {
@@ -251,13 +365,14 @@
           }
         }
 
-        // --- 2. STEREO FM CON ESTÁTICA Y SILENCIO TOTAL POR PROXIMIDAD ---
+        // --- 2. STEREO FM CON ESTÁTICA Y PROXIMIDAD ---
         document.getElementById('radioVol').innerText = `Volumen: ${radio.volume}%`;
 
         if (activeSys === 'radio' && radio.isPlaying) {
           
           if (currentStationId !== radio.stationId) {
             currentStationId = radio.stationId;
+            currentUrlIndex = 0;
             isTuning = true;
 
             radioAudio.pause();
@@ -268,7 +383,9 @@
             const radioStatus = document.getElementById('radioStatus');
             radioStatus.innerText = "Sintonizando señal... (5s)";
             radioStatus.className = "status-text tuning";
-            document.getElementById('radioStationTitle').innerText = radio.stationId.toUpperCase();
+
+            const station = DIAL_ARGENTINO[radio.stationId] || DIAL_ARGENTINO["ros_vida"];
+            document.getElementById('radioStationTitle').innerText = station.name;
 
             if (tuningTimer) clearTimeout(tuningTimer);
 
@@ -276,8 +393,7 @@
               isTuning = false;
               staticEngine.stop();
 
-              const streamUrl = STREAMS_OFICIALES[radio.stationId] || STREAMS_OFICIALES["ros_vida"];
-              radioAudio.src = streamUrl;
+              radioAudio.src = station.urls[0];
               radioAudio.load();
               
               if (audioUnlocked && radio.volume > 0) {
@@ -290,11 +406,10 @@
             }, 5000);
           }
 
-          // CONTROL ESTRICTO DE VOLUMEN POR PROXIMIDAD
+          // APLICACIÓN ESTRICTA DE VOLUMEN POR PROXIMIDAD
           if (isTuning) {
             staticEngine.setVolume(radio.volume);
           } else {
-            // SI TE ALEJAS (VOLUMEN 0%): SILENCIO ABSOLUTO
             if (radio.volume <= 0) {
               radioAudio.volume = 0;
               radioAudio.muted = true;
