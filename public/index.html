@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>CarDash Audio Sync</title>
+    <style>
+        body { 
+            background: #121212; 
+            color: white; 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding-top: 50px; 
+        }
+        .card {
+            background: #1e1e1e;
+            display: inline-block;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        input { 
+            padding: 12px; 
+            font-size: 16px; 
+            border-radius: 6px; 
+            border: 1px solid #333; 
+            background: #2a2a2a;
+            color: white;
+            text-align: center; 
+            outline: none;
+        }
+        button { 
+            padding: 12px 20px; 
+            font-size: 16px; 
+            background: #00e676; 
+            color: #000;
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            margin-left: 8px; 
+        }
+        button:hover { background: #00c853; }
+        #status { 
+            font-size: 16px; 
+            color: #888; 
+            margin-top: 20px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🚗 CarDash Audio Sync</h2>
+        <p>Escribe tu UserId de Roblox para conectar tus parlantes:</p>
+        <input type="text" id="uid" placeholder="Ej: 12345678">
+        <button onclick="conectar()">Vincular</button>
+        <div id="status">Desconectado</div>
+    </div>
+
+    <!-- Reproductor oculto de YouTube -->
+    <div id="player" style="margin-top: 20px;"></div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', { 
+                height: '0', 
+                width: '0', 
+                playerVars: { 'autoplay': 1 } 
+            });
+        }
+
+        function conectar() {
+            const userId = document.getElementById('uid').value.trim();
+            if (!userId) return alert('Por favor ingresa tu UserId');
+
+            const es = new EventSource(`/api/stream/${userId}`);
+            const status = document.getElementById('status');
+            status.innerText = "✅ ¡Vinculado! Ya puedes minimizar esta pestaña.";
+            status.style.color = "#00e676";
+            
+            es.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+                if (msg.action === 'play' && player && player.loadVideoById) {
+                    player.loadVideoById(msg.data);
+                    player.playVideo();
+                } else if (msg.action === 'pause' && player && player.pauseVideo) {
+                    player.pauseVideo();
+                } else if (msg.action === 'volume' && player && player.setVolume) {
+                    player.setVolume(Number(msg.data));
+                }
+            };
+        }
+    </script>
+</body>
+</html>
