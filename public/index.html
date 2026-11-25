@@ -9,27 +9,27 @@
             color: white; 
             font-family: Arial, sans-serif; 
             text-align: center; 
-            padding-top: 50px; 
+            padding: 30px; 
         }
         .card {
             background: #1e1e1e;
             display: inline-block;
-            padding: 30px;
+            padding: 20px 30px;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
         }
         input { 
-            padding: 12px; 
+            padding: 10px; 
             font-size: 16px; 
             border-radius: 6px; 
             border: 1px solid #333; 
             background: #2a2a2a;
             color: white;
             text-align: center; 
-            outline: none;
         }
         button { 
-            padding: 12px 20px; 
+            padding: 10px 18px; 
             font-size: 16px; 
             background: #00e676; 
             color: #000;
@@ -37,50 +37,72 @@
             border-radius: 6px; 
             font-weight: bold; 
             cursor: pointer; 
-            margin-left: 8px; 
         }
-        button:hover { background: #00c853; }
         #status { 
-            font-size: 16px; 
-            color: #888; 
-            margin-top: 20px; 
+            font-size: 15px; 
+            color: #ffca28; 
+            margin-top: 15px; 
+        }
+        #player-container {
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>🚗 CarDash Audio Sync</h2>
-        <p>Escribe tu UserId de Roblox para conectar tus parlantes:</p>
-        <input type="text" id="uid" placeholder="Ej: 12345678">
+        <input type="text" id="uid" placeholder="Tu UserId de Roblox">
         <button onclick="conectar()">Vincular</button>
-        <div id="status">Desconectado</div>
+        <div id="status">Esperando que ingreses tu UserId...</div>
     </div>
 
-    <!-- Reproductor oculto de YouTube -->
-    <div id="player" style="margin-top: 20px;"></div>
+    <!-- Ahora el reproductor es visible para que YouTube no lo bloquee -->
+    <div id="player-container">
+        <div id="player"></div>
+    </div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         let player;
+        let apiLista = false;
+
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', { 
-                height: '0', 
-                width: '0', 
-                playerVars: { 'autoplay': 1 } 
+                height: '240', 
+                width: '380', 
+                playerVars: { 
+                    'autoplay': 1,
+                    'controls': 1
+                },
+                events: {
+                    'onReady': () => { apiLista = true; }
+                }
             });
         }
 
         function conectar() {
             const userId = document.getElementById('uid').value.trim();
-            if (!userId) return alert('Por favor ingresa tu UserId');
+            if (!userId) return alert('Ingresa tu UserId');
+
+            const status = document.getElementById('status');
+            status.innerText = "Conectando al servidor...";
 
             const es = new EventSource(`/api/stream/${userId}`);
-            const status = document.getElementById('status');
-            status.innerText = "✅ ¡Vinculado! Ya puedes minimizar esta pestaña.";
-            status.style.color = "#00e676";
+            
+            es.onopen = () => {
+                status.innerText = "✅ Vinculado al juego. Esperando canción desde el auto...";
+                status.style.color = "#00e676";
+            };
+
+            es.onerror = () => {
+                status.innerText = "❌ Error de conexión con el servidor";
+                status.style.color = "#ff5252";
+            };
             
             es.onmessage = (e) => {
                 const msg = JSON.parse(e.data);
+                status.innerText = `Acción recibida: ${msg.action} (${msg.data || ''})`;
+
                 if (msg.action === 'play' && player && player.loadVideoById) {
                     player.loadVideoById(msg.data);
                     player.playVideo();
