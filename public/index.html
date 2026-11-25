@@ -2,24 +2,25 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CarDash OS - Receiver</title>
+    <title>CarDash Receiver Pro</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
             background: #0a0b10; 
             color: #fff; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 20px;
         }
         .dashboard {
             background: #141721;
             border: 2px solid #23293d;
             border-radius: 20px;
             padding: 25px;
-            width: 420px;
+            width: 440px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.8);
             text-align: center;
         }
@@ -63,25 +64,37 @@
             border-radius: 8px;
             cursor: pointer;
         }
+        .btn-unmute {
+            width: 100%;
+            background: #ffb300;
+            color: #000;
+            font-weight: bold;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 15px;
+            display: none;
+        }
         .info-card {
             background: #0d0f17;
             border: 1px solid #1c2233;
             border-radius: 10px;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 15px;
+            text-align: left;
         }
-        .info-card .label { font-size: 11px; color: #6a7694; text-transform: uppercase; }
-        .info-card .value { font-size: 14px; color: #e2e8f0; font-weight: bold; margin-top: 4px; }
+        .info-card .label { font-size: 11px; color: #6a7694; text-transform: uppercase; margin-bottom: 4px; }
+        .info-card .value { font-size: 13px; color: #00e676; font-family: monospace; word-break: break-all; }
 
-        /* Contenedor visible de YouTube */
         #player-wrapper {
             border-radius: 12px;
             overflow: hidden;
-            margin-top: 10px;
             border: 1px solid #23293d;
+            background: #000;
+            margin-top: 10px;
             display: flex;
             justify-content: center;
-            background: #000;
         }
     </style>
 </head>
@@ -93,17 +106,18 @@
             <div id="statusDot" class="status-dot"></div>
         </div>
 
+        <button id="unmuteBtn" class="btn-unmute" onclick="activarSonido()">🔊 CLICK AQUÍ PARA ACTIVAR AUDIO</button>
+
         <div class="input-group">
-            <input type="text" id="uid" placeholder="Tu UserId de Roblox">
+            <input type="text" id="uid" value="3618165542" placeholder="Tu UserId de Roblox">
             <button class="btn-primary" onclick="vincular()">Vincular</button>
         </div>
 
         <div class="info-card">
-            <div class="label">Pista en reproducción</div>
-            <div class="value" id="trackText">Esperando canción...</div>
+            <div class="label">Registro de Diagnóstico:</div>
+            <div class="value" id="logText">Cargando reproductor de YouTube...</div>
         </div>
 
-        <!-- Video de YouTube visible para que no se bloquee -->
         <div id="player-wrapper">
             <div id="player"></div>
         </div>
@@ -113,17 +127,49 @@
     <script>
         let player;
         let lastTimestamp = 0;
-        let syncInterval = null;
+        let isReady = false;
+
+        function setLog(txt, color="#00e676") {
+            const el = document.getElementById('logText');
+            el.innerText = txt;
+            el.style.color = color;
+        }
 
         function onYouTubeIframeAPIReady() {
+            setLog("YouTube API lista. Haz click en Vincular.");
             player = new YT.Player('player', {
-                height: '180',
-                width: '370',
+                height: '200',
+                width: '390',
+                videoId: 'dQw4w9WgXcQ', // Video de prueba inicial
                 playerVars: { 
-                    'autoplay': 1, 
+                    'autoplay': 0, 
                     'controls': 1 
+                },
+                events: {
+                    'onReady': () => {
+                        isReady = true;
+                        setLog("Reproductor listo. Vincula tu UserId.");
+                        document.getElementById('unmuteBtn').style.display = 'block';
+                    },
+                    'onError': (e) => {
+                        if (e.data === 150 || e.data === 101) {
+                            setLog("⚠️ ERROR 150: Este video tiene derechos de autor bloqueados para reproductores externos. Prueba con otro video o lyric video.", "#ff5252");
+                        } else {
+                            setLog("Error de YouTube código: " + e.data, "#ff5252");
+                        }
+                    }
                 }
             });
+        }
+
+        function activarSonido() {
+            if (player && player.playVideo) {
+                player.playVideo();
+                player.unMute();
+                player.setVolume(100);
+                document.getElementById('unmuteBtn').style.display = 'none';
+                setLog("Audio activado por el usuario.");
+            }
         }
 
         function vincular() {
@@ -131,34 +177,33 @@
             if (!uid) return alert("Ingresa tu UserId");
 
             document.getElementById('statusDot').classList.add('active');
-            document.getElementById('trackText').innerText = "✅ Sincronizado. Esperando al auto...";
+            setLog("Conectado. Esperando orden desde Roblox...");
 
-            if (syncInterval) clearInterval(syncInterval);
-
-            // Preguntamos al servidor cada 800 milisegundos si Roblox mandó algo nuevo
-            syncInterval = setInterval(async () => {
+            setInterval(async () => {
                 try {
                     const res = await fetch(`/api/status/${uid}`);
                     const data = await res.json();
 
-                    // Si hay una orden nueva que no hayamos ejecutado
                     if (data.timestamp && data.timestamp > lastTimestamp) {
                         lastTimestamp = data.timestamp;
-                        console.log("Nueva orden recibida de Roblox:", data);
+                        setLog(`Orden recibida: ${data.action} -> ${data.data || ''}`);
 
-                        if (data.action === 'play' && player && player.loadVideoById) {
-                            document.getElementById('trackText').innerText = "Reproduciendo: " + data.data;
-                            player.loadVideoById(data.data);
-                            player.playVideo();
-                        } else if (data.action === 'pause' && player && player.pauseVideo) {
-                            document.getElementById('trackText').innerText = "Pausado desde el auto";
-                            player.pauseVideo();
-                        } else if (data.action === 'volume' && player && player.setVolume) {
-                            player.setVolume(Number(data.data));
+                        if (data.action === 'play') {
+                            if (player && player.loadVideoById) {
+                                setLog("Cargando video ID: " + data.data);
+                                player.loadVideoById(data.data);
+                                player.playVideo();
+                                player.unMute();
+                            }
+                        } else if (data.action === 'pause') {
+                            if (player && player.pauseVideo) {
+                                player.pauseVideo();
+                                setLog("Pausado desde el auto.");
+                            }
                         }
                     }
                 } catch (e) {
-                    console.log("Error sincronizando:", e);
+                    setLog("Error sincronizando: " + e.message, "#ff5252");
                 }
             }, 800);
         }
