@@ -12,42 +12,44 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Clientes SSE conectados por UserId
 const sseClients = new Map();
 
-// Base de datos de emisoras con cadenas de servidores HTTPS verificados y canales oficiales
-const STATIONS_DB = {
+// Base de datos de emisoras con cadenas de respaldo HTTPS verificadas
+const STATIONS_CONFIG = {
   "caba_urbanaplay": {
     name: "Urbana Play 104.3",
     dial: "104.3 FM",
     city: "Buenos Aires",
-    scrapeUrl: "https://urbanaplayfm.com/radio/",
-    ytChannel: "@UrbanaPlayFM",
-    fallbackStreams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAY_SC",
-      "https://icecast.urbanaplayfm.com/urbanaplay.mp3",
-      "https://stream.zeno.fm/f8y0u69u21zuv"
+    ytQuery: "Urbana Play 104.3 en vivo",
+    channelHandle: "@UrbanaPlayFM",
+    officialWeb: "https://urbanaplayfm.com/radio/",
+    audioStreams: [
+      "https://stream.zeno.fm/f8y0u69u21zuv",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAYAAC.aac"
     ]
   },
   "ros_vida": {
     name: "FM Vida Rosario 97.9",
     dial: "97.9 FM",
     city: "Rosario, Santa Fe",
-    scrapeUrl: "https://www.rosario3.com/radios/fmvida.html",
-    ytChannel: "@fmvida979",
-    fallbackStreams: [
-      "https://stream.zeno.fm/9uvrtub5puzuv",
-      "https://audio.fmvida.com.ar/stream",
-      "https://live.fmvida.com.ar/stream"
+    ytQuery: "FM Vida 97.9 Rosario en vivo",
+    channelHandle: "@fmvida979",
+    officialWeb: "https://www.rosario3.com/radios/fmvida.html",
+    audioStreams: [
+      "https://stream.rosario3.com/fmvida.mp3",
+      "https://streaming.rosario3.com/fmvida/live/playlist.m3u8",
+      "https://edge01.inliveserver.com:1936/fmvida/fmvida/playlist.m3u8",
+      "https://stream.zeno.fm/9uvrtub5puzuv"
     ]
   },
   "ros_1003": {
     name: "FM 100.3 Rosario",
     dial: "100.3 FM",
     city: "Rosario, Santa Fe",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
+    ytQuery: "FM 100.3 Rosario en vivo",
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
       "https://stream.zeno.fm/6y2x37n5t7zuv",
       "https://stream.boing973.com/boing"
     ]
@@ -56,9 +58,10 @@ const STATIONS_DB = {
     name: "Aspen 102.3",
     dial: "102.3 FM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
+    ytQuery: null,
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN_SC",
       "https://edge.audio.aspen1023.com.ar/aspen.mp3"
     ]
@@ -67,53 +70,56 @@ const STATIONS_DB = {
     name: "La 100 99.9",
     dial: "99.9 FM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/LA_100_SC",
-      "https://stream.cienradios.com/la100.mp3"
+    ytQuery: "La 100 en vivo 99.9",
+    channelHandle: "@la100",
+    officialWeb: null,
+    audioStreams: [
+      "https://stream.cienradios.com/la100.mp3",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/LA_100_SC"
     ]
   },
   "caba_mitre": {
     name: "Radio Mitre AM 790",
     dial: "790 AM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE_AM790_SC",
-      "https://stream.cienradios.com/mitremp3.mp3"
+    ytQuery: "Radio Mitre AM 790 en vivo",
+    channelHandle: "@radiomitre",
+    officialWeb: null,
+    audioStreams: [
+      "https://stream.cienradios.com/mitremp3.mp3",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE_AM790_SC"
     ]
   },
   "caba_pop": {
     name: "Pop Radio 101.5",
     dial: "101.5 FM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
-      "https://pop.streamindalo.com.ar/pop.mp3",
-      "https://stream.indalo.com.ar/pop.mp3"
+    ytQuery: null,
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
+      "https://pop.streamindalo.com.ar/pop.mp3"
     ]
   },
   "caba_mega": {
     name: "Mega 98.3",
     dial: "98.3 FM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
-      "https://mega.streamindalo.com.ar/mega.mp3",
-      "https://stream.indalo.com.ar/mega.mp3"
+    ytQuery: null,
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
+      "https://mega.streamindalo.com.ar/mega.mp3"
     ]
   },
   "caba_los40": {
     name: "Los 40 105.5",
     dial: "105.5 FM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
+    ytQuery: null,
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARGENTINA_SC"
     ]
   },
@@ -121,9 +127,10 @@ const STATIONS_DB = {
     name: "Radio Disney 94.3",
     dial: "94.3 FM",
     city: "Buenos Aires",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
+    ytQuery: null,
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC"
     ]
   },
@@ -131,189 +138,177 @@ const STATIONS_DB = {
     name: "Cadena 3 100.9",
     dial: "100.9 FM / 700 AM",
     city: "Córdoba",
-    scrapeUrl: null,
-    ytChannel: null,
-    fallbackStreams: [
-      "https://cadena3.streamguys1.com/cadena3",
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA3_SC"
+    ytQuery: null,
+    channelHandle: null,
+    officialWeb: null,
+    audioStreams: [
+      "https://cadena3.streamguys1.com/cadena3"
     ]
   }
 };
 
-// Función auxiliar para realizar peticiones HTTP/HTTPS con encabezados de navegador real
-function fetchHtml(targetUrl, timeoutMs = 2800) {
+// Cliente HTTP para consultar sitios web simulando navegador
+function httpGet(targetUrl, timeoutMs = 2800) {
   return new Promise((resolve, reject) => {
-    const parsed = new URL(targetUrl);
-    const client = parsed.protocol === 'https:' ? https : http;
-    const options = {
-      hostname: parsed.hostname,
-      port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-      path: parsed.pathname + parsed.search,
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'es-419,es;q=0.9,en;q=0.8'
-      },
-      timeout: timeoutMs
-    };
-
-    const req = client.request(options, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        let redirectUrl = res.headers.location;
-        if (!redirectUrl.startsWith('http')) {
-          redirectUrl = new URL(redirectUrl, targetUrl).href;
+    try {
+      const parsed = new URL(targetUrl);
+      const client = parsed.protocol === 'https:' ? https : http;
+      const req = client.request({
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'es-ES,es;q=0.9'
+        },
+        timeout: timeoutMs
+      }, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          let redir = res.headers.location;
+          if (!redir.startsWith('http')) redir = new URL(redir, targetUrl).href;
+          return resolve(httpGet(redir, timeoutMs));
         }
-        return resolve(fetchHtml(redirectUrl, timeoutMs));
-      }
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => resolve(data));
-    });
-
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error("Timeout"));
-    });
-    req.end();
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => resolve(data));
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+      req.end();
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
-// Resuelve dinámicamente el ID de YouTube Live o enlaces M3U8
-async function resolveDynamicSources(stationConfig) {
-  let resolvedYtId = null;
-  let dynamicAudioUrls = [];
+// Búsqueda profunda de transmisiones en vivo
+async function searchLiveBroadcast(station) {
+  let liveVideoId = null;
+  let dynamicAudioList = [];
 
-  // 1. Scraping del canal de YouTube si está configurado
-  if (stationConfig.ytChannel) {
+  // 1. Buscar en la web oficial si existe (ej. urbanaplayfm.com)
+  if (station.officialWeb) {
     try {
-      const ytLiveUrl = `https://www.youtube.com/${stationConfig.ytChannel}/live`;
-      const html = await fetchHtml(ytLiveUrl, 2600);
-      const videoIdMatch = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-      const canonicalMatch = html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})">/);
-      
-      if (videoIdMatch && videoIdMatch[1]) {
-        resolvedYtId = videoIdMatch[1];
-      } else if (canonicalMatch && canonicalMatch[1]) {
-        resolvedYtId = canonicalMatch[1];
+      const webHtml = await httpGet(station.officialWeb, 2500);
+      const embedMatch = webHtml.match(/(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+      if (embedMatch && embedMatch[1]) {
+        liveVideoId = embedMatch[1];
       }
-    } catch (e) {
-      // Continuar silenciosamente hacia la siguiente fuente
-    }
-  }
-
-  // 2. Scraping del sitio web oficial de la radio (ej: Urbana Play)
-  if (stationConfig.scrapeUrl) {
-    try {
-      const pageHtml = await fetchHtml(stationConfig.scrapeUrl, 2600);
-      
-      // Búsqueda de iframe de YouTube incrustado en el sitio oficial
-      const ytEmbedMatch = pageHtml.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
-      if (ytEmbedMatch && ytEmbedMatch[1] && !resolvedYtId) {
-        resolvedYtId = ytEmbedMatch[1];
-      }
-
-      // Búsqueda de streams HLS o MP3 directos en el código
-      const m3u8Matches = pageHtml.match(/https?:\/\/[^\s"'<>]+\.(m3u8|mp3)[^\s"'<>]*/gi);
-      if (m3u8Matches && m3u8Matches.length > 0) {
-        m3u8Matches.forEach(url => {
-          if (!dynamicAudioUrls.includes(url)) {
-            dynamicAudioUrls.push(url);
-          }
+      const streamMatches = webHtml.match(/https?:\/\/[^\s"'<>]+\.(?:m3u8|mp3)[^\s"'<>]*/gi);
+      if (streamMatches) {
+        streamMatches.forEach(url => {
+          if (!dynamicAudioList.includes(url)) dynamicAudioList.push(url);
         });
       }
     } catch (e) {
-      // Continuar con los streams de respaldo
+      // Continuar con la siguiente fuente
     }
   }
 
-  const combinedStreams = [...dynamicAudioUrls, ...stationConfig.fallbackStreams];
+  // 2. Si no hay ID, buscar directamente en YouTube filtrando por "EN DIRECTO / EN VIVO" (sp=EgJAAQ%253D%253D)
+  if (!liveVideoId && station.ytQuery) {
+    try {
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(station.ytQuery)}&sp=EgJAAQ%253D%253D`;
+      const searchHtml = await httpGet(searchUrl, 2500);
+      
+      // Buscar videoId que tenga indicador de directo activo
+      const liveIdMatch = searchHtml.match(/"videoId":"([a-zA-Z0-9_-]{11})"(?:(?!<\/script>).)*?"style":"BADGE_STYLE_TYPE_LIVE_NOW"/s);
+      if (liveIdMatch && liveIdMatch[1]) {
+        liveVideoId = liveIdMatch[1];
+      } else {
+        // Coincidencia estándar de videoId en resultados de búsqueda
+        const genericMatch = searchHtml.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+        if (genericMatch && genericMatch[1]) {
+          liveVideoId = genericMatch[1];
+        }
+      }
+    } catch (e) {
+      // Continuar con los streams de audio
+    }
+  }
+
   return {
-    youtubeLiveId: resolvedYtId,
-    streams: combinedStreams
+    liveVideoId: liveVideoId,
+    streams: [...dynamicAudioList, ...station.audioStreams]
   };
 }
 
-// Endpoint de resolución de emisoras
+// Endpoint de resolución de emisora (llamado durante los 5 segundos de estática)
 app.get('/api/resolve-station', async (req, res) => {
   const stationId = req.query.id;
-  const config = STATIONS_DB[stationId];
+  const station = STATIONS_CONFIG[stationId];
 
-  if (!config) {
-    return res.status(404).json({ error: "Emisora no encontrada" });
+  if (!station) {
+    return res.status(404).json({ error: "Emisora no registrada" });
   }
 
   try {
-    const dynamicData = await resolveDynamicSources(config);
+    const result = await searchLiveBroadcast(station);
     return res.json({
       success: true,
       stationId: stationId,
-      name: config.name,
-      dial: config.dial,
-      city: config.city,
-      youtubeLiveId: dynamicData.youtubeLiveId,
-      streams: dynamicData.streams
+      name: station.name,
+      dial: station.dial,
+      city: station.city,
+      youtubeId: result.liveVideoId,
+      streams: result.streams
     });
   } catch (err) {
     return res.json({
       success: true,
       stationId: stationId,
-      name: config.name,
-      dial: config.dial,
-      city: config.city,
-      youtubeLiveId: null,
-      streams: config.fallbackStreams
+      name: station.name,
+      dial: station.dial,
+      city: station.city,
+      youtubeId: null,
+      streams: station.audioStreams
     });
   }
 });
 
-// SSE (Server-Sent Events) para sincronizar en tiempo real con el navegador
+// SSE para comandos en tiempo real
 app.get('/events', (req, res) => {
   const userId = req.query.userId;
-  if (!userId) {
-    return res.status(400).send("Falta userId");
-  }
+  if (!userId) return res.status(400).send("Falta userId");
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  sseClients.set(userId, res);
+  sseClients.set(String(userId), res);
 
-  // Heartbeat cada 25 segundos
   const heartbeat = setInterval(() => {
-    res.write(': heartbeat\n\n');
+    res.write(': keepalive\n\n');
   }, 25000);
 
   req.on('close', () => {
     clearInterval(heartbeat);
-    sseClients.delete(userId);
+    sseClients.delete(String(userId));
   });
 });
 
-// Endpoint de control desde Roblox
+// Control remoto desde Roblox
 app.post('/api/control', (req, res) => {
-  const token = req.headers['x-auth-token'];
-  if (token !== MASTER_KEY) {
+  if (req.headers['x-auth-token'] !== MASTER_KEY) {
     return res.status(403).json({ error: "No autorizado" });
   }
 
   const { userId, system, action, data } = req.body;
   if (!userId || !system || !action) {
-    return res.status(400).json({ error: "Parámetros incompletos" });
+    return res.status(400).json({ error: "Datos incompletos" });
   }
 
   const client = sseClients.get(String(userId));
   if (client) {
-    const payload = JSON.stringify({ system, action, data });
-    client.write(`data: ${payload}\n\n`);
+    client.write(`data: ${JSON.stringify({ system, action, data })}\n\n`);
   }
 
   return res.json({ success: true });
 });
 
 app.listen(PORT, () => {
-  console.log(`Receptor Maestro ejecutándose en puerto ${PORT}`);
+  console.log(`Servidor de Control ejecutándose en puerto ${PORT}`);
 });
