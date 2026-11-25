@@ -7,15 +7,20 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Guarda la última orden de cada jugador
+// CLAVE MAESTRA: Solo tu juego de Roblox sabe esta clave
+const MASTER_SECRET = "CarDashSeguro2026";
+
 let userState = {};
 
-// Recibe la orden de Roblox
+// Recibir orden de Roblox (Protegido con contraseña)
 app.post('/api/control', (req, res) => {
-    const { userId, action, data } = req.body;
-    console.log(`[Roblox -> Web] Usuario: ${userId} | Acción: ${action} | Datos: ${data}`);
+    const authHeader = req.headers['x-auth-token'];
+    if (authHeader !== MASTER_SECRET) {
+        return res.status(403).json({ error: "Acceso no autorizado" });
+    }
 
-    userState[userId] = {
+    const { pin, action, data } = req.body;
+    userState[pin] = {
         action: action,
         data: data,
         timestamp: Date.now()
@@ -24,12 +29,12 @@ app.post('/api/control', (req, res) => {
     res.json({ success: true });
 });
 
-// La página web consulta aquí cada segundo (INFALIBLE)
-app.get('/api/status/:userId', (req, res) => {
-    const userId = req.params.userId;
-    const state = userState[userId] || { action: 'none', data: '', timestamp: 0 };
+// La web consulta usando su PIN privado
+app.get('/api/status/:pin', (req, res) => {
+    const pin = req.params.pin;
+    const state = userState[pin] || { action: 'none', data: '', timestamp: 0 };
     res.json(state);
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor activo en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`Servidor protegido en puerto ${PORT}`));
