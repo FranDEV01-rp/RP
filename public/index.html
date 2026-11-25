@@ -1,212 +1,138 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>CarDash Receiver Pro</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            background: #0a0b10; 
-            color: #fff; 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .dashboard {
-            background: #141721;
-            border: 2px solid #23293d;
-            border-radius: 20px;
-            padding: 25px;
-            width: 440px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-            text-align: center;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 1px solid #23293d;
-            padding-bottom: 12px;
-            margin-bottom: 15px;
-        }
-        .header h1 { font-size: 18px; color: #00e676; letter-spacing: 1px; }
-        .status-dot {
-            width: 12px; height: 12px; background: #ff5252;
-            border-radius: 50%; box-shadow: 0 0 10px #ff5252;
-        }
-        .status-dot.active { background: #00e676; box-shadow: 0 0 12px #00e676; }
-        
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        input {
-            flex: 1;
-            padding: 10px;
-            background: #0a0b10;
-            border: 1px solid #323b57;
-            border-radius: 8px;
-            color: white;
-            font-size: 14px;
-            text-align: center;
-            outline: none;
-        }
-        button.btn-primary {
-            background: #00e676;
-            color: #05140b;
-            font-weight: bold;
-            border: none;
-            padding: 10px 18px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        .btn-unmute {
-            width: 100%;
-            background: #ffb300;
-            color: #000;
-            font-weight: bold;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 15px;
-            display: none;
-        }
-        .info-card {
-            background: #0d0f17;
-            border: 1px solid #1c2233;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 15px;
-            text-align: left;
-        }
-        .info-card .label { font-size: 11px; color: #6a7694; text-transform: uppercase; margin-bottom: 4px; }
-        .info-card .value { font-size: 13px; color: #00e676; font-family: monospace; word-break: break-all; }
-
-        #player-wrapper {
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid #23293d;
-            background: #000;
-            margin-top: 10px;
-            display: flex;
-            justify-content: center;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>CarDash Receiver Pro</title>
+<style>
+ * { box-sizing:border-box; margin:0; padding:0; }
+ body { background:#0a0b10; color:#fff; font-family:'Segoe UI',Tahoma,sans-serif; display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+ .dashboard { background:#141721; border:2px solid #23293d; border-radius:20px; padding:25px; width:440px; box-shadow:0 10px 40px rgba(0,0,0,.8); text-align:center; }
+ .header { display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #23293d; padding-bottom:12px; margin-bottom:15px; }
+ .header h1 { font-size:18px; color:#00e676; letter-spacing:1px; }
+ .status-dot { width:12px; height:12px; background:#ff5252; border-radius:50%; box-shadow:0 0 10px #ff5252; }
+ .status-dot.active { background:#00e676; box-shadow:0 0 12px #00e676; }
+ .input-group { display:flex; gap:10px; margin-bottom:15px; }
+ input { flex:1; padding:10px; background:#0a0b10; border:1px solid #323b57; border-radius:8px; color:#fff; font-size:14px; text-align:center; outline:none; }
+ button.btn-primary { background:#00e676; color:#05140b; font-weight:bold; border:none; padding:10px 18px; border-radius:8px; cursor:pointer; }
+ .info-card { background:#0d0f17; border:1px solid #1c2233; border-radius:10px; padding:12px; margin-bottom:12px; text-align:left; }
+ .info-card .label { font-size:11px; color:#6a7694; text-transform:uppercase; margin-bottom:4px; }
+ .info-card .value { font-size:13px; font-family:monospace; word-break:break-all; }
+ #player-wrapper { border-radius:12px; overflow:hidden; border:1px solid #23293d; background:#000; display:flex; justify-content:center; }
+ .hint { font-size:11px; color:#6a7694; margin-top:10px; }
+</style>
 </head>
 <body>
+<div class="dashboard">
+  <div class="header">
+    <h1>🚗 CARDASH RECEIVER</h1>
+    <div id="statusDot" class="status-dot"></div>
+  </div>
 
-    <div class="dashboard">
-        <div class="header">
-            <h1>🚗 CARDASH RECEIVER</h1>
-            <div id="statusDot" class="status-dot"></div>
-        </div>
+  <div class="input-group">
+    <input type="text" id="uid" placeholder="Tu UserId de Roblox">
+    <button class="btn-primary" onclick="vincular()">Vincular</button>
+  </div>
 
-        <button id="unmuteBtn" class="btn-unmute" onclick="activarSonido()">🔊 CLICK AQUÍ PARA ACTIVAR AUDIO</button>
+  <div class="info-card">
+    <div class="label">Estado del sonido</div>
+    <div class="value" id="soundText" style="color:#ffb300;">🔇 Esperando primera canción...</div>
+  </div>
 
-        <div class="input-group">
-            <input type="text" id="uid" value="3618165542" placeholder="Tu UserId de Roblox">
-            <button class="btn-primary" onclick="vincular()">Vincular</button>
-        </div>
+  <div class="info-card">
+    <div class="label">Diagnóstico</div>
+    <div class="value" id="logText" style="color:#00e676;">Cargando YouTube...</div>
+  </div>
 
-        <div class="info-card">
-            <div class="label">Registro de Diagnóstico:</div>
-            <div class="value" id="logText">Cargando reproductor de YouTube...</div>
-        </div>
+  <div id="player-wrapper"><div id="player"></div></div>
+  <div class="hint">💡 Si se silencia, hacé UN click en cualquier parte de esta página.</div>
+</div>
 
-        <div id="player-wrapper">
-            <div id="player"></div>
-        </div>
-    </div>
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+let player;
+let lastTimestamp = 0;
+let currentId = null;
 
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <script>
-        let player;
-        let lastTimestamp = 0;
-        let isReady = false;
+const logEl = document.getElementById('logText');
+const soundEl = document.getElementById('soundText');
 
-        function setLog(txt, color="#00e676") {
-            const el = document.getElementById('logText');
-            el.innerText = txt;
-            el.style.color = color;
+function setLog(t, c='#00e676'){ logEl.innerText = t; logEl.style.color = c; }
+function setSound(t, c='#00e676'){ soundEl.innerText = t; soundEl.style.color = c; }
+
+function onYouTubeIframeAPIReady(){
+  setLog('YouTube listo. Vinculá tu UserId.');
+  player = new YT.Player('player', {
+    height: '200', width: '390',
+    playerVars: { autoplay:0, controls:1, rel:0, playsinline:1, origin: location.origin },
+    events: {
+      onStateChange: (e) => {
+        if (e.data === 1) { player.unMute(); player.setVolume(100); }
+        else if (e.data === 2) setSound('⏸ Pausado','#ffb300');
+        else if (e.data === 3) setSound('⏳ Cargando video...','#ffb300');
+      },
+      onError: (e) => {
+        if (e.data === 101 || e.data === 150) setLog('⚠️ ESE VIDEO BLOQUEA la reproducción externa (derechos de autor). Probá otro video o un "lyric video".','#ff5252');
+        else if (e.data === 100) setLog('⚠️ El video no existe o es privado.','#ff5252');
+        else setLog('⚠️ Error de YouTube código: ' + e.data,'#ff5252');
+      }
+    }
+  });
+}
+
+// DESBLOQUEADOR: cualquier click o tecla en la página libera el audio
+function unlockAudio(){
+  if (!player || !player.unMute) return;
+  try {
+    player.unMute();
+    player.setVolume(100);
+    const st = player.getPlayerState();
+    if (st !== 1 && currentId) player.playVideo();
+  } catch(e){}
+}
+document.addEventListener('click', unlockAudio);
+document.addEventListener('keydown', unlockAudio);
+
+function vincular(){
+  const uid = document.getElementById('uid').value.trim();
+  if (!uid) return alert('Ingresa tu UserId');
+  document.getElementById('statusDot').classList.add('active');
+  setLog('Sincronizado. Esperando orden del auto...');
+
+  setInterval(async () => {
+    try {
+      const res = await fetch('/api/status/' + uid);
+      const d = await res.json();
+      if (d.timestamp && d.timestamp > lastTimestamp) {
+        lastTimestamp = d.timestamp;
+        if (d.action === 'play') {
+          currentId = d.data;
+          setLog('Canción recibida: ' + d.data);
+          player.loadVideoById(currentId);
+          player.playVideo();
+          player.unMute(); player.setVolume(100);
+          setSound('🔊 Reproduciendo...','#00e676');
+        } else if (d.action === 'pause') {
+          player.pauseVideo();
+          setSound('⏸ Pausado desde el auto','#ffb300');
+        } else if (d.action === 'volume') {
+          player.setVolume(Number(d.data));
+          setSound('🎚 Volumen web: ' + d.data + '%','#00e676');
         }
+      }
+    } catch(e){}
+  }, 800);
 
-        function onYouTubeIframeAPIReady() {
-            setLog("YouTube API lista. Haz click en Vincular.");
-            player = new YT.Player('player', {
-                height: '200',
-                width: '390',
-                videoId: 'dQw4w9WgXcQ', // Video de prueba inicial
-                playerVars: { 
-                    'autoplay': 0, 
-                    'controls': 1 
-                },
-                events: {
-                    'onReady': () => {
-                        isReady = true;
-                        setLog("Reproductor listo. Vincula tu UserId.");
-                        document.getElementById('unmuteBtn').style.display = 'block';
-                    },
-                    'onError': (e) => {
-                        if (e.data === 150 || e.data === 101) {
-                            setLog("⚠️ ERROR 150: Este video tiene derechos de autor bloqueados para reproductores externos. Prueba con otro video o lyric video.", "#ff5252");
-                        } else {
-                            setLog("Error de YouTube código: " + e.data, "#ff5252");
-                        }
-                    }
-                }
-            });
-        }
-
-        function activarSonido() {
-            if (player && player.playVideo) {
-                player.playVideo();
-                player.unMute();
-                player.setVolume(100);
-                document.getElementById('unmuteBtn').style.display = 'none';
-                setLog("Audio activado por el usuario.");
-            }
-        }
-
-        function vincular() {
-            const uid = document.getElementById('uid').value.trim();
-            if (!uid) return alert("Ingresa tu UserId");
-
-            document.getElementById('statusDot').classList.add('active');
-            setLog("Conectado. Esperando orden desde Roblox...");
-
-            setInterval(async () => {
-                try {
-                    const res = await fetch(`/api/status/${uid}`);
-                    const data = await res.json();
-
-                    if (data.timestamp && data.timestamp > lastTimestamp) {
-                        lastTimestamp = data.timestamp;
-                        setLog(`Orden recibida: ${data.action} -> ${data.data || ''}`);
-
-                        if (data.action === 'play') {
-                            if (player && player.loadVideoById) {
-                                setLog("Cargando video ID: " + data.data);
-                                player.loadVideoById(data.data);
-                                player.playVideo();
-                                player.unMute();
-                            }
-                        } else if (data.action === 'pause') {
-                            if (player && player.pauseVideo) {
-                                player.pauseVideo();
-                                setLog("Pausado desde el auto.");
-                            }
-                        }
-                    }
-                } catch (e) {
-                    setLog("Error sincronizando: " + e.message, "#ff5252");
-                }
-            }, 800);
-        }
-    </script>
+  // Monitor de silencio en tiempo real
+  setInterval(() => {
+    if (!player || !player.isMuted) return;
+    try {
+      if (player.getPlayerState() === 1) {
+        if (player.isMuted()) setSound('🔇 SILENCIADO por el navegador → Hacé UN CLICK en la página','#ff5252');
+        else setSound('🔊 SONANDO ✔','#00e676');
+      }
+    } catch(e){}
+  }, 1000);
+}
+</script>
 </body>
 </html>
