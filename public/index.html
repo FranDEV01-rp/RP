@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receptor de Audio del Vehículo</title>
+  <!-- Soporte nativo HLS para FM Vida y emisoras digitales -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -93,6 +95,16 @@
       margin-top: 10px;
       font-style: italic;
     }
+    .radio-yt-container {
+      width: 280px;
+      height: 158px;
+      margin: 14px auto 0 auto;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      display: none;
+    }
+    .radio-yt-container.visible { display: block; }
     .vol-display {
       margin-top: 16px;
       font-size: 0.85rem;
@@ -108,16 +120,21 @@
     <br>
     <button id="btnInit" class="btn-init">Activar Audio del Vehículo</button>
 
-    <!-- CarDash YouTube -->
+    <!-- CarDash Pantalla Multimedia -->
     <div id="cardashBox" class="cardash-box">
       <div id="cardashPlayer"></div>
     </div>
 
-    <!-- Radio FM Argentina -->
+    <!-- Radio Estéreo FM Argentina -->
     <div id="radioBox" class="radio-box">
       <div id="radioDial" class="radio-dial">---.- FM</div>
       <div id="radioName" class="radio-name">Buscando señal...</div>
       <div id="staticText" class="static-indicator" style="display: none;">Sintonizando oscilador analógico... (5s)</div>
+      
+      <!-- Reproductor para transmisiones directas de estudio (Urbana Play / FM Vida) -->
+      <div id="radioYtDock" class="radio-yt-container">
+        <div id="radioYtPlayer"></div>
+      </div>
     </div>
 
     <div id="volDisplay" class="vol-display">Volumen de Proximidad: 100%</div>
@@ -129,13 +146,16 @@
   <script>
     let audioCtx = null;
     let cardashYt = null;
-    let activeSystem = null;
+    let radioYt = null;
+    let hlsInstance = null;
+
+    let activeSystem = null; // "cardash" | "radio"
     let currentVol = 100;
     let currentCardashTrackId = "";
     let tuningTimeout = null;
     let staticNoise = null;
-    let pendingUrls = [];
-    let isRetrying = false;
+    let streamQueue = [];
+    let isAdvancing = false;
 
     const radioAudio = document.getElementById("radioAudio");
     const statusBadge = document.getElementById("statusBadge");
@@ -145,18 +165,45 @@
     const radioDial = document.getElementById("radioDial");
     const radioName = document.getElementById("radioName");
     const staticText = document.getElementById("staticText");
+    const radioYtDock = document.getElementById("radioYtDock");
     const volDisplay = document.getElementById("volDisplay");
 
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get("userId") || "3618165542";
 
     window.onYouTubeIframeAPIReady = function() {
+      // 1. CarDash Player
       cardashYt = new YT.Player('cardashPlayer', {
         width: '100%',
         height: '100%',
         playerVars: { autoplay: 0, controls: 1, rel: 0, playsinline: 1 }
       });
+
+      // 2. Radio Live Player
+      radioYt = new YT.Player('radioYtPlayer', {
+        width: '100%',
+        height: '100%',
+        playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1 },
+        events: {
+          'onStateChange': onRadioYtStateChange,
+          'onError': onRadioYtError
+        }
+      });
     };
+
+    // Si YouTube arranca en pausa (Urbana Play), forzar reproducción continua
+    function onRadioYtStateChange(event) {
+      if (activeSystem === "radio") {
+        if (event.data === 2 || event.data === 5) {
+          event.target.playVideo();
+        }
+      }
+    }
+
+    function onRadioYtError() {
+      radioYtDock.classList.remove("visible");
+      playNextStream();
+    }
 
     btnInit.addEventListener("click", () => {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -192,7 +239,9 @@
       };
     }
 
-    // CarDash
+    // ==========================================
+    //   LÓGICA CARDASH MULTIMEDIA
+    // ==========================================
     function handleCarDash(action, data) {
       if (activeSystem !== "cardash") {
         stopRadio();
@@ -229,7 +278,9 @@
       cardashBox.classList.remove("visible");
     }
 
-    // Radio
+    // ==========================================
+    //   LÓGICA RADIO FM ARGENTINA
+    // ==========================================
     function handleRadio(action, stationId) {
       if (action === "pause") {
         stopRadio();
@@ -248,28 +299,47 @@
     }
 
     function tuneStation(stationId) {
-      stopRadioAudio();
+      stopRadioPlayback();
       startStaticNoise();
       radioDial.textContent = "BUSCANDO...";
-      radioName.textContent = "Sintonizando oscilador FM...";
+      radioName.textContent = "Sintonizando oscilador analógico...";
       staticText.style.display = "block";
+      radioYtDock.classList.remove("visible");
 
       fetch(`/api/station-info?id=${stationId}`)
         .then(r => r.json())
         .then(info => {
           if (tuningTimeout) clearTimeout(tuningTimeout);
+
+          // Esperar estrictamente los 5 segundos de estática antes de soltar la emisión
           tuningTimeout = setTimeout(() => {
             stopStaticNoise();
             staticText.style.display = "none";
             radioDial.textContent = info.dial;
             radioName.textContent = `${info.name} - ${info.city}`;
 
-            // Cola de reproducción: Servidores directos HTTPS primero, luego Proxy seguro
-            pendingUrls = [
-              ...info.directUrls.filter(u => u.startsWith("https://")),
-              info.proxyUrl
-            ];
-            playNextUrl();
+            // Si hay transmisión en vivo en YouTube (ej. Urbana Play), probar primero
+            if (info.ytVideoId && radioYt && typeof radioYt.loadVideoById === "function") {
+              radioYtDock.classList.add("visible");
+              radioYt.loadVideoById(info.ytVideoId);
+              radioYt.setVolume(currentVol);
+              radioYt.playVideo();
+
+              // Verificación tras 3 segundos
+              setTimeout(() => {
+                if (radioYt.getPlayerState && radioYt.getPlayerState() !== 1) {
+                  radioYt.playVideo();
+                  setTimeout(() => {
+                    if (radioYt.getPlayerState && radioYt.getPlayerState() !== 1) {
+                      radioYtDock.classList.remove("visible");
+                      setupStreamQueue(info);
+                    }
+                  }, 1200);
+                }
+              }, 3000);
+            } else {
+              setupStreamQueue(info);
+            }
           }, 5000);
         })
         .catch(() => {
@@ -282,48 +352,81 @@
         });
     }
 
-    function playNextUrl() {
-      if (isRetrying) return;
-      if (pendingUrls.length === 0) {
-        radioName.textContent = "Reconectando con la emisora...";
+    function setupStreamQueue(info) {
+      streamQueue = [
+        ...info.streams.filter(u => u.startsWith("https://")),
+        info.proxyUrl,
+        ...info.streams
+      ];
+      playNextStream();
+    }
+
+    function playNextStream() {
+      if (isAdvancing) return;
+      isAdvancing = true;
+      setTimeout(() => { isAdvancing = false; }, 800);
+
+      if (streamQueue.length === 0) {
+        radioName.textContent = "Reconectando emisora...";
         return;
       }
 
-      isRetrying = true;
-      setTimeout(() => { isRetrying = false; }, 1000);
+      const url = streamQueue.shift();
+      stopRadioPlayback();
 
-      const target = pendingUrls.shift();
-      stopRadioAudio();
-
-      radioAudio.src = target;
-      radioAudio.volume = currentVol / 100;
-      
-      const p = radioAudio.play();
-      if (p !== undefined) {
-        p.catch(() => {
-          playNextUrl();
-        });
+      // Reproducción con Hls.js para FM Vida y formatos .m3u8
+      if (url.includes(".m3u8")) {
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(url);
+          hlsInstance.attachMedia(radioAudio);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            radioAudio.volume = currentVol / 100;
+            radioAudio.play().catch(() => playNextStream());
+          });
+          hlsInstance.on(Hls.Events.ERROR, () => playNextStream());
+        } else if (radioAudio.canPlayType('application/vnd.apple.mpegurl')) {
+          radioAudio.src = url;
+          radioAudio.volume = currentVol / 100;
+          radioAudio.play().catch(() => playNextStream());
+        }
+      } else {
+        // Reproducción de MP3 nativo / StreamTheWorld / Proxy
+        radioAudio.src = url;
+        radioAudio.volume = currentVol / 100;
+        const p = radioAudio.play();
+        if (p !== undefined) {
+          p.catch(() => playNextStream());
+        }
+        radioAudio.onerror = () => playNextStream();
       }
-
-      radioAudio.onerror = () => {
-        playNextUrl();
-      };
     }
 
-    function stopRadioAudio() {
+    function stopRadioPlayback() {
       radioAudio.pause();
       radioAudio.removeAttribute('src');
       radioAudio.load();
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+      if (radioYt && typeof radioYt.stopVideo === "function") {
+        radioYt.stopVideo();
+      }
+      radioYtDock.classList.remove("visible");
     }
 
     function stopRadio() {
       if (tuningTimeout) clearTimeout(tuningTimeout);
       stopStaticNoise();
-      stopRadioAudio();
-      pendingUrls = [];
+      stopRadioPlayback();
+      streamQueue = [];
       radioBox.classList.remove("visible");
     }
 
+    // ==========================================
+    //   RUIDO BLANCO ANALÓGICO REALISTA ("ashhhhh")
+    // ==========================================
     function startStaticNoise() {
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -367,12 +470,16 @@
       }
     }
 
+    // ==========================================
+    //   CONTROL DE PROXIMIDAD REALISTA
+    // ==========================================
     function setProximityVolume(vol) {
       currentVol = Math.max(0, Math.min(100, vol));
       volDisplay.textContent = `Volumen de Proximidad: ${currentVol}%`;
 
       const norm = currentVol / 100;
       if (cardashYt && typeof cardashYt.setVolume === "function") cardashYt.setVolume(currentVol);
+      if (radioYt && typeof radioYt.setVolume === "function") radioYt.setVolume(currentVol);
       radioAudio.volume = norm;
       if (staticNoise && staticNoise.gain) staticNoise.gain.gain.value = norm * 0.35;
     }
