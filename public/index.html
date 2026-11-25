@@ -6,24 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #0c0f17; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    
-    .container { width: 100%; max-width: 780px; background: #151926; border-radius: 16px; padding: 25px; border: 1px solid #232b40; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-    h1 { font-size: 22px; text-align: center; margin-bottom: 4px; color: #fff; }
+    body { background-color: #0b0e17; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+    .container { width: 100%; max-width: 780px; background: #131826; border-radius: 16px; padding: 24px; border: 1px solid #232b40; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
     .subtitle { text-align: center; font-size: 13px; color: #7a889b; margin-bottom: 20px; }
     
     .unlock-banner { background: #f59e0b; color: #000; padding: 14px; border-radius: 10px; font-weight: 800; text-align: center; margin-bottom: 20px; cursor: pointer; animation: pulse 1.6s infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
 
-    .user-box { display: flex; gap: 10px; margin-bottom: 20px; background: #1c2336; padding: 12px; border-radius: 10px; }
-    input[type="text"] { flex: 1; background: #0e121d; border: 1px solid #2d3752; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; outline: none; }
-    button { background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-    button:hover { background: #2563eb; }
+    .user-box { display: flex; gap: 10px; margin-bottom: 20px; background: #1a2033; padding: 12px; border-radius: 10px; }
+    input[type="text"] { flex: 1; background: #0c0f18; border: 1px solid #2d3752; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; outline: none; }
+    button { background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-weight: bold; cursor: pointer; }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } }
 
-    .card { background: #181d2d; border-radius: 12px; padding: 18px; border: 2px solid #263048; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; }
+    .card { background: #171c2b; border-radius: 12px; padding: 18px; border: 2px solid #242c42; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; }
     .card.active { border-color: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
     
     .card-title { font-size: 13px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
@@ -33,19 +31,20 @@
 
     .station-name { font-size: 17px; font-weight: bold; color: #60a5fa; min-height: 44px; }
     .vol-display { font-size: 13px; color: #94a3b8; margin-top: 10px; }
-    .status-text { font-size: 12px; color: #10b981; font-weight: bold; margin-top: 5px; }
+    .status-text { font-size: 12px; font-weight: bold; margin-top: 5px; color: #10b981; }
+    .status-text.tuning { color: #f59e0b; }
 
     .yt-frame-wrapper { border-radius: 10px; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16/9; margin-top: 12px; }
     iframe { width: 100%; height: 100%; border: none; }
 
-    .radio-wave { display: flex; align-items: center; justify-content: center; height: 100px; background: #0f131f; border-radius: 10px; margin-top: 12px; color: #64748b; font-size: 14px; text-align: center; padding: 10px; }
+    .radio-box { height: 120px; background: #0d111c; border-radius: 10px; margin-top: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; color: #64748b; border: 1px dashed #242d45; }
   </style>
 </head>
 <body>
 
   <div class="container">
     <h1>Receptor Vehicular Sincronizado</h1>
-    <div class="subtitle">Multimedia CarDash & Stereo FM Nacional Argentino</div>
+    <div class="subtitle">Multimedia CarDash & Stereo FM Nacional con Sintonizador Real</div>
 
     <div id="unlockBtn" class="unlock-banner" onclick="unlockAudio()">
       🔊 HACÉ CLICK AQUÍ PARA HABILITAR EL AUDIO EN EL NAVEGADOR
@@ -57,7 +56,7 @@
     </div>
 
     <div class="grid">
-      <!-- TARJETA CARDASH (YOUTUBE) -->
+      <!-- PANEL CARDASH (YOUTUBE) -->
       <div id="cardashCard" class="card">
         <div>
           <div class="card-title">
@@ -73,7 +72,7 @@
         </div>
       </div>
 
-      <!-- TARJETA STEREO (RADIO FM ARGENTINA) -->
+      <!-- PANEL RADIO STEREO ARGENTINA -->
       <div id="radioCard" class="card">
         <div>
           <div class="card-title">
@@ -82,57 +81,90 @@
           </div>
           <div class="station-name" id="radioStationTitle">FM Vida Rosario 97.9</div>
           <div class="vol-display" id="radioVol">Volumen: 100%</div>
-          <div class="status-text" id="radioStatus">En espera del auto</div>
+          <div class="status-text" id="radioStatus">Radio apagada</div>
         </div>
-        <div class="radio-wave" id="radioWaveBox">
-          📻 Sintonizador Directo Oficial
+        <div class="radio-box" id="radioWaveBox">
+          📻 Sintonizador Oficial
         </div>
-        <button style="margin-top: 10px; background: #1e293b;" onclick="probarRadio()">Probar Sonido FM</button>
       </div>
     </div>
   </div>
 
-  <!-- Audio nativo para emisoras argentinas -->
-  <audio id="nativeRadioAudio" preload="auto"></audio>
-
-  <!-- YouTube API -->
+  <audio id="nativeRadioAudio" preload="none"></audio>
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // STREAMS DIRECTOS HTTPS VERIFICADOS DE ARGENTINA
-    const EMISORAS_ARGENTINA = {
-      // Rosario
-      "ros_vida": "https://streaming.televisonlitoral.com/fmvida.mp3",
-      "ros_1003": "https://stream.cienradios.com/la100.mp3",
-      "ros_mitre": "https://stream.cienradios.com/mitre.mp3",
-      "ros_lared": "https://stream.cienradios.com/la100.mp3",
-      "ros_nacional": "https://stream.cienradios.com/mitre.mp3",
+    // GENERADOR DE RUIDO DE ESTÁTICA / INTERFERENCIA DE RADIO ANALÓGICA (Web Audio API)
+    class RadioStaticEngine {
+      constructor() {
+        this.ctx = null;
+        this.source = null;
+        this.gain = null;
+        this.isPlaying = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      start(volume = 1) {
+        this.init();
+        if (this.isPlaying) return;
+        this.isPlaying = true;
 
-      // CABA
-      "caba_aspen": "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN.mp3",
-      "caba_la100": "https://stream.cienradios.com/la100.mp3",
-      "caba_los40": "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC",
-      "caba_disney": "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC",
-      "caba_mega": "https://stream.indalo.com.ar/mega.mp3",
-      "caba_pop": "https://stream.indalo.com.ar/pop.mp3",
-      "caba_rockpop": "https://stream.rockandpop.com.ar/rockandpop.mp3",
-      "caba_urbanaplay": "https://stream.cienradios.com/la100.mp3",
-      "caba_convos": "https://stream.indalo.com.ar/pop.mp3",
-      "caba_one": "https://stream.indalo.com.ar/one.mp3",
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1; // Ruido blanco
+        }
 
-      // Córdoba y AM de Ruta
-      "cba_cadena3": "https://streaming.cadena3.com/cadena3.mp3",
-      "cba_mitre": "https://stream.cienradios.com/mitre.mp3",
-      "am_mitre": "https://stream.cienradios.com/mitre.mp3",
-      "am_radio10": "https://stream.indalo.com.ar/radio10.mp3"
-    };
+        this.source = this.ctx.createBufferSource();
+        this.source.buffer = noiseBuffer;
+        this.source.loop = true;
 
+        // Filtro pasabanda para imitar el sonido exacto de estática de radio FM vieja
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1400;
+        filter.Q.value = 1.2;
+
+        this.gain = this.ctx.createGain();
+        this.gain.gain.value = volume * 0.18;
+
+        this.source.connect(filter);
+        filter.connect(this.gain);
+        this.gain.connect(this.ctx.destination);
+        this.source.start(0);
+      }
+      stop() {
+        if (this.source) {
+          try { this.source.stop(); } catch(e) {}
+          this.source.disconnect();
+          this.source = null;
+        }
+        this.isPlaying = false;
+      }
+      setVolume(volume) {
+        if (this.gain && this.isPlaying) {
+          this.gain.gain.value = (volume / 100) * 0.18;
+        }
+      }
+    }
+
+    const staticEngine = new RadioStaticEngine();
     let ytPlayer = null;
     let isYtReady = false;
     let audioUnlocked = false;
 
     let currentLoadedYtId = "";
-    let currentStationKey = "";
+    let currentStationId = "";
+    let tuningTimer = null;
+    let isTuning = false;
 
     const radioAudio = document.getElementById('nativeRadioAudio');
     const unlockBtn = document.getElementById('unlockBtn');
@@ -150,37 +182,17 @@
     function unlockAudio() {
       audioUnlocked = true;
       unlockBtn.style.display = 'none';
+      staticEngine.init();
       radioAudio.play().then(() => radioAudio.pause()).catch(() => {});
-      if (ytPlayer && ytPlayer.playVideo) {
-        ytPlayer.playVideo();
-      }
+      if (ytPlayer && ytPlayer.playVideo) ytPlayer.playVideo();
     }
 
     function onYouTubeIframeAPIReady() {
       ytPlayer = new YT.Player('yt-player', {
         height: '100%',
         width: '100%',
-        playerVars: {
-          'autoplay': 1,
-          'controls': 1,
-          'disablekb': 1,
-          'playsinline': 1
-        },
-        events: {
-          'onReady': () => { isYtReady = true; }
-        }
-      });
-    }
-
-    // Botón de prueba manual para verificar que tu navegador emite sonido
-    function probarRadio() {
-      unlockAudio();
-      radioAudio.src = EMISORAS_ARGENTINA["ros_vida"];
-      radioAudio.volume = 1.0;
-      radioAudio.play().then(() => {
-        document.getElementById('radioStatus').innerText = "Sonando señal de prueba";
-      }).catch(e => {
-        alert("Tu navegador bloqueó el audio. Hacé click en el botón amarillo de arriba.");
+        playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1 },
+        events: { 'onReady': () => { isYtReady = true; } }
       });
     }
 
@@ -199,22 +211,16 @@
         document.getElementById('cardashCard').classList.toggle('active', activeSys === 'cardash' && cardash.isPlaying);
         document.getElementById('radioCard').classList.toggle('active', activeSys === 'radio' && radio.isPlaying);
 
-        // ==========================================
-        // 1. LÓGICA DE YOUTUBE (SIN REINICIAR AL DESPAUSAR)
-        // ==========================================
+        // --- 1. LÓGICA CARDASH (YOUTUBE) ---
         document.getElementById('cardashVol').innerText = `Volumen: ${cardash.volume}%`;
-
         if (isYtReady && ytPlayer && ytPlayer.loadVideoById) {
           if (activeSys === 'cardash' && cardash.isPlaying && cardash.videoId) {
-            
-            // Si es un tema distinto, lo carga nuevo
             if (currentLoadedYtId !== cardash.videoId) {
               currentLoadedYtId = cardash.videoId;
               ytPlayer.loadVideoById(cardash.videoId);
-              document.getElementById('cardashTitle').innerText = "ID: " + cardash.videoId;
-              document.getElementById('cardashStatus').innerText = "Reproduciendo...";
+              document.getElementById('cardashTitle').innerText = "Track ID: " + cardash.videoId;
+              document.getElementById('cardashStatus').innerText = "Reproduciendo";
             } else {
-              // Si es la misma canción que estaba pausada, SOLO REANUDA donde quedó
               const state = ytPlayer.getPlayerState();
               if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING && audioUnlocked) {
                 ytPlayer.playVideo();
@@ -222,51 +228,84 @@
               }
             }
             ytPlayer.setVolume(cardash.volume);
-
           } else {
-            // Pausar YouTube si no está activo
             if (ytPlayer.getPlayerState && ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
               ytPlayer.pauseVideo();
-              document.getElementById('cardashStatus').innerText = "Pausado (Guardado en segundo actual)";
+              document.getElementById('cardashStatus').innerText = "Pausado (Guardado en memoria)";
             }
           }
         }
 
-        // ==========================================
-        // 2. LÓGICA DE RADIO ARGENTINA (STREAM DIRECTO)
-        // ==========================================
+        // --- 2. LÓGICA RADIO FM CON ESTÁTICA Y 5 SEGUNDOS DE SINTONIZACIÓN ---
         document.getElementById('radioVol').innerText = `Volumen: ${radio.volume}%`;
 
         if (activeSys === 'radio' && radio.isPlaying) {
-          const streamUrl = EMISORAS_ARGENTINA[radio.stationId] || EMISORAS_ARGENTINA["ros_vida"];
+          
+          // Si el jugador cambió de estación o recién encendió la radio
+          if (currentStationId !== radio.stationId) {
+            currentStationId = radio.stationId;
+            isTuning = true;
 
-          // Si cambiamos de estación en el auto
-          if (currentStationKey !== radio.stationId) {
-            currentStationKey = radio.stationId;
-            radioAudio.src = streamUrl;
-            radioAudio.load();
-            document.getElementById('radioStationTitle').innerText = radio.stationId.toUpperCase();
-            document.getElementById('radioStatus').innerText = "Conectando señal en vivo...";
-            if (audioUnlocked) radioAudio.play().catch(() => {});
-          }
-
-          radioAudio.volume = radio.volume / 100;
-
-          if (radioAudio.paused && audioUnlocked) {
-            radioAudio.play().then(() => {
-              document.getElementById('radioStatus').innerText = "Transmitiendo en vivo";
-            }).catch(() => {});
-          }
-        } else {
-          if (!radioAudio.paused) {
+            // Cortar la radio anterior
             radioAudio.pause();
-            document.getElementById('radioStatus').innerText = "Radio apagada";
+            radioAudio.src = "";
+
+            // Iniciar estática analógica "ashhhh"
+            if (audioUnlocked) {
+              staticEngine.start(radio.volume / 100);
+            }
+
+            const radioStatus = document.getElementById('radioStatus');
+            radioStatus.innerText = "Sintonizando señal... (5s)";
+            radioStatus.className = "status-text tuning";
+            document.getElementById('radioStationTitle').innerText = radio.stationId.toUpperCase();
+
+            if (tuningTimer) clearTimeout(tuningTimer);
+
+            // Al cumplirse los 5 segundos exactos:
+            tuningTimer = setTimeout(() => {
+              isTuning = false;
+              staticEngine.stop(); // Se apaga la estática
+
+              radioAudio.src = `/api/radio-stream/${radio.stationId}`;
+              radioAudio.volume = radio.volume / 100;
+              radioAudio.load();
+              
+              if (audioUnlocked) {
+                radioAudio.play().then(() => {
+                  radioStatus.innerText = "En vivo";
+                  radioStatus.className = "status-text";
+                }).catch(() => {});
+              }
+            }, 5000);
           }
+
+          // Control de volumen por proximidad mientras suena la radio o la estática
+          if (isTuning) {
+            staticEngine.setVolume(radio.volume);
+          } else {
+            radioAudio.volume = Math.max(0, Math.min(1, radio.volume / 100));
+            if (radio.volume === 0 && !radioAudio.paused) {
+              radioAudio.pause();
+            } else if (radio.volume > 0 && radioAudio.paused && audioUnlocked) {
+              radioAudio.play().catch(() => {});
+            }
+          }
+
+        } else {
+          // Apagar radio y estática si no está activa
+          if (isTuning) {
+            clearTimeout(tuningTimer);
+            isTuning = false;
+          }
+          staticEngine.stop();
+          if (!radioAudio.paused) radioAudio.pause();
+          document.getElementById('radioStatus').innerText = "Radio apagada";
+          document.getElementById('radioStatus').className = "status-text";
+          currentStationId = "";
         }
 
-      } catch (e) {
-        // Fallo de red transitorio
-      }
+      } catch (e) {}
     }
 
     setInterval(pollStatus, 700);
