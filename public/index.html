@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receptor de Audio del Vehículo</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -76,7 +77,7 @@
     }
     .radio-box.visible { display: block; }
     .radio-dial {
-      font-size: 2.4rem;
+      font-size: 2.3rem;
       font-weight: 700;
       color: #f0883e;
       font-family: monospace;
@@ -108,7 +109,7 @@
     <br>
     <button id="btnInit" class="btn-init">Activar Audio del Vehículo</button>
 
-    <!-- Pantalla CarDash Multimedia (YouTube) -->
+    <!-- Pantalla CarDash Multimedia -->
     <div id="cardashBox" class="cardash-box">
       <div id="cardashPlayer"></div>
     </div>
@@ -123,18 +124,19 @@
     <div id="volDisplay" class="vol-display">Volumen: 100%</div>
   </div>
 
-  <!-- Audio HTML5 nativo conectado al proxy -->
   <audio id="radioAudio" preload="none"></audio>
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
     let audioCtx = null;
     let cardashYt = null;
+    let hlsInstance = null;
     let activeSystem = null; // "cardash" | "radio"
     let currentVol = 100;
     let currentCardashTrackId = "";
     let tuningTimeout = null;
     let staticNoise = null;
+    let pendingStreamQueue = [];
 
     const radioAudio = document.getElementById("radioAudio");
     const statusBadge = document.getElementById("statusBadge");
@@ -158,12 +160,12 @@
       });
     };
 
-    // Botón de activación inicial para habilitar la reproducción de audio en el navegador
+    // Botón de activación de permisos de audio del navegador
     btnInit.addEventListener("click", () => {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
 
-      // Desbloqueo del elemento de audio HTML5
+      // Desbloqueo de audio nativo
       radioAudio.play().then(() => radioAudio.pause()).catch(() => {});
 
       btnInit.style.display = "none";
@@ -202,7 +204,7 @@
     }
 
     // ==========================================
-    //   LÓGICA CARDASH MULTIMEDIA
+    //   LÓGICA CARDASH MULTIMEDIA (YOUTUBE)
     // ==========================================
     function handleCarDash(action, data) {
       if (activeSystem !== "cardash") {
@@ -245,7 +247,7 @@
     }
 
     // ==========================================
-    //   LÓGICA RADIO FM (CON PROXY Y ESTÁTICA)
+    //   LÓGICA RADIO FM (CASCADA HÍBRIDA DIRECTO/PROXY)
     // ==========================================
     function handleRadio(action, stationId) {
       if (action === "pause") {
@@ -267,36 +269,36 @@
     }
 
     function tuneStation(stationId) {
-      // 1. Detener audio anterior de inmediato
-      radioAudio.pause();
-      radioAudio.removeAttribute('src');
-      radioAudio.load();
+      // 1. Detener audio anterior
+      stopRadioAudio();
 
-      // 2. Iniciar 5 segundos obligatorios de estática analógica
+      // 2. Iniciar exactamente 5 segundos de estática analógica
       startStaticNoise();
       radioDial.textContent = "BUSCANDO...";
-      radioName.textContent = "Alineando dial analógico...";
+      radioName.textContent = "Sintonizando oscilador FM...";
       staticText.style.display = "block";
 
-      // Obtener metadatos de la emisora
+      // Solicitar datos y servidores de la emisora
       fetch(`/api/station-info?id=${stationId}`)
         .then(r => r.json())
         .then(info => {
           if (tuningTimeout) clearTimeout(tuningTimeout);
 
-          // Esperar estrictamente los 5 segundos de estática antes de soltar la emisión
+          // Esperar estrictamente los 5 segundos de sintonización
           tuningTimeout = setTimeout(() => {
             stopStaticNoise();
             staticText.style.display = "none";
             radioDial.textContent = info.dial;
-            radioName.textContent = `${info.name} (${info.city})`;
+            radioName.textContent = `${info.name} - ${info.city}`;
 
-            // Conectar al proxy de audio HTTPS propio del servidor
-            radioAudio.src = `/api/stream-proxy?id=${stationId}&t=${Date.now()}`;
-            radioAudio.volume = currentVol / 100;
-            radioAudio.play().catch(err => {
-              console.warn("Fallo en reproducción:", err);
-            });
+            // Armar cola de reproducción: Primero URLs directas HTTPS, luego Proxy con soporte ICY
+            pendingStreamQueue = [
+              ...info.directUrls.filter(u => u.startsWith("https://")),
+              info.proxyUrl,
+              ...info.directUrls
+            ];
+
+            executeNextInQueue();
           }, 5000);
         })
         .catch(() => {
@@ -304,21 +306,73 @@
           tuningTimeout = setTimeout(() => {
             stopStaticNoise();
             staticText.style.display = "none";
-            radioName.textContent = "Emisora fuera de alcance";
+            radioName.textContent = "Señal no disponible";
           }, 5000);
         });
+    }
+
+    function executeNextInQueue() {
+      if (pendingStreamQueue.length === 0) {
+        radioName.textContent = "Señal perdida (Reintentando...)";
+        return;
+      }
+
+      const currentTarget = pendingStreamQueue.shift();
+      stopRadioAudio();
+
+      // Reproducción HLS (.m3u8) si aplica
+      if (currentTarget.includes(".m3u8")) {
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(currentTarget);
+          hlsInstance.attachMedia(radioAudio);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            radioAudio.volume = currentVol / 100;
+            radioAudio.play().catch(() => executeNextInQueue());
+          });
+          hlsInstance.on(Hls.Events.ERROR, () => executeNextInQueue());
+        } else if (radioAudio.canPlayType('application/vnd.apple.mpegurl')) {
+          radioAudio.src = currentTarget;
+          radioAudio.volume = currentVol / 100;
+          radioAudio.play().catch(() => executeNextInQueue());
+        }
+      } else {
+        // Reproducción de Stream Directo / Proxy MP3
+        radioAudio.src = currentTarget;
+        radioAudio.volume = currentVol / 100;
+        
+        const p = radioAudio.play();
+        if (p !== undefined) {
+          p.catch(err => {
+            console.warn("Fallo de reproducción en fuente:", currentTarget, err);
+            executeNextInQueue();
+          });
+        }
+        radioAudio.onerror = () => {
+          executeNextInQueue();
+        };
+      }
+    }
+
+    function stopRadioAudio() {
+      radioAudio.pause();
+      radioAudio.removeAttribute('src');
+      radioAudio.load();
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
     }
 
     function stopRadio() {
       if (tuningTimeout) clearTimeout(tuningTimeout);
       stopStaticNoise();
-      radioAudio.pause();
-      radioAudio.removeAttribute('src');
-      radioAudio.load();
+      stopRadioAudio();
+      pendingStreamQueue = [];
       radioBox.classList.remove("visible");
     }
 
-    // Generador en tiempo real de ruido blanco analógico ("ashhhhh")
+    // Generador de Ruido Analógico con Web Audio API ("ashhhhh")
     function startStaticNoise() {
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -362,7 +416,7 @@
       }
     }
 
-    // Control de volumen por proximidad
+    // Atenuación de Volumen por Distancia/Proximidad
     function setProximityVolume(vol) {
       currentVol = Math.max(0, Math.min(100, vol));
       volDisplay.textContent = `Volumen de Proximidad: ${currentVol}%`;
