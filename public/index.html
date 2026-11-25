@@ -6,11 +6,7 @@
   <title>Receptor de Audio del Vehículo</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background: #0d1117;
       color: #e6edf3;
@@ -32,11 +28,7 @@
       text-align: center;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
-    h1 {
-      font-size: 1.3rem;
-      margin-bottom: 8px;
-      color: #58a6ff;
-    }
+    h1 { font-size: 1.3rem; margin-bottom: 8px; color: #58a6ff; }
     .status-badge {
       display: inline-block;
       padding: 4px 12px;
@@ -63,12 +55,8 @@
       border-radius: 6px;
       cursor: pointer;
       margin-bottom: 16px;
-      transition: background 0.2s;
     }
-    .btn-init:hover {
-      background: #2ea043;
-    }
-    .cardash-viewport {
+    .cardash-box {
       width: 100%;
       aspect-ratio: 16 / 9;
       background: #000;
@@ -77,22 +65,20 @@
       margin-top: 16px;
       display: none;
     }
-    .cardash-viewport.visible {
-      display: block;
-    }
-    .radio-display {
+    .cardash-box.visible { display: block; }
+    
+    .radio-box {
       background: #0a0c10;
       border: 1px solid #1f242c;
       border-radius: 8px;
       padding: 18px;
       margin-top: 16px;
       display: none;
+      position: relative;
     }
-    .radio-display.visible {
-      display: block;
-    }
+    .radio-box.visible { display: block; }
     .radio-dial {
-      font-size: 2rem;
+      font-size: 2.2rem;
       font-weight: 700;
       color: #f0883e;
       font-family: monospace;
@@ -102,199 +88,186 @@
       color: #c9d1d9;
       margin-top: 4px;
     }
-    .radio-static-anim {
+    .static-indicator {
       font-size: 0.9rem;
       color: #8b949e;
       margin-top: 8px;
       font-style: italic;
     }
-    .vol-indicator {
+    /* El reproductor de YouTube de la radio se mantiene dentro del DOM visible con 1px 
+       para evitar que Chrome suspenda la pestaña o congele el audio por estar fuera de pantalla */
+    .radio-yt-dock {
+      width: 240px;
+      height: 135px;
+      margin: 12px auto 0 auto;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #000;
+      display: none;
+    }
+    .radio-yt-dock.active { display: block; }
+    .vol-display {
       margin-top: 16px;
       font-size: 0.85rem;
       color: #8b949e;
-    }
-    /* Contenedor off-screen de YouTube para que el navegador mantenga el renderizado activo sin pausar el audio */
-    #radio-yt-wrapper {
-      position: fixed;
-      top: -9999px;
-      left: -9999px;
-      width: 320px;
-      height: 180px;
-      opacity: 0.001;
-      pointer-events: none;
-      z-index: -100;
     }
   </style>
 </head>
 <body>
 
   <div class="panel">
-    <h1>Receptor de Sonido del Vehículo</h1>
-    <div id="statusBadge" class="status-badge">Desconectado - Pulsa Activar</div>
+    <h1>Receptor de Audio del Vehículo</h1>
+    <div id="statusBadge" class="status-badge">Desconectado - Presiona Activar</div>
     <br>
     <button id="btnInit" class="btn-init">Activar Audio del Vehículo</button>
 
-    <!-- Reproductor CarDash (Pantalla Multimedia) -->
-    <div id="cardashContainer" class="cardash-viewport">
+    <!-- Pantalla CarDash Multimedia -->
+    <div id="cardashBox" class="cardash-box">
       <div id="cardashPlayer"></div>
     </div>
 
-    <!-- Pantalla Estéreo FM Argentina -->
-    <div id="radioContainer" class="radio-display">
+    <!-- Pantalla Estéreo Radio FM -->
+    <div id="radioBox" class="radio-box">
       <div id="radioDial" class="radio-dial">---.- FM</div>
       <div id="radioName" class="radio-name">Buscando señal...</div>
-      <div id="radioStaticMsg" class="radio-static-anim" style="display: none;">Sintonizando señal analógica...</div>
+      <div id="staticText" class="static-indicator" style="display: none;">Sintonizando oscilador analógico...</div>
+      
+      <!-- Visor de Radio YouTube cuando la emisora emite video/audio en directo -->
+      <div id="radioYtDock" class="radio-yt-dock">
+        <div id="radioYtPlayer"></div>
+      </div>
     </div>
 
-    <div id="volIndicator" class="vol-indicator">Volumen de Proximidad: 100%</div>
+    <div id="volDisplay" class="vol-display">Volumen: 100%</div>
   </div>
 
-  <!-- Contenedor fuera de pantalla para transmisiones de YouTube Live -->
-  <div id="radio-yt-wrapper">
-    <div id="radioYtPlayer"></div>
-  </div>
-
-  <!-- Audio HTML5 para streaming directo de emisoras -->
-  <audio id="html5Audio" preload="none"></audio>
-
-  <!-- YouTube IFrame API -->
+  <audio id="radioAudio" preload="none"></audio>
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    let audioContext = null;
+    let audioCtx = null;
     let cardashYt = null;
     let radioYt = null;
-    let hlsInstance = null;
+    let hls = null;
 
-    let activeSystem = null; // "cardash" | "radio" | null
-    let currentProximityVol = 100;
-    let currentLoadedCardashId = "";
-    let isTuningInProgress = false;
-    let tuningTimer = null;
-    let staticOscillatorNode = null;
+    let activeSystem = null; // "cardash" | "radio"
+    let currentVol = 100;
+    let currentCardashTrackId = "";
+    let tuningTimeout = null;
+    let staticNoise = null;
+    let pendingStreamsList = [];
 
-    const html5Audio = document.getElementById("html5Audio");
+    const radioAudio = document.getElementById("radioAudio");
     const statusBadge = document.getElementById("statusBadge");
     const btnInit = document.getElementById("btnInit");
-    const cardashContainer = document.getElementById("cardashContainer");
-    const radioContainer = document.getElementById("radioContainer");
+    const cardashBox = document.getElementById("cardashBox");
+    const radioBox = document.getElementById("radioBox");
     const radioDial = document.getElementById("radioDial");
     const radioName = document.getElementById("radioName");
-    const radioStaticMsg = document.getElementById("radioStaticMsg");
-    const volIndicator = document.getElementById("volIndicator");
+    const staticText = document.getElementById("staticText");
+    const radioYtDock = document.getElementById("radioYtDock");
+    const volDisplay = document.getElementById("volDisplay");
 
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get("userId") || "3618165542";
 
-    // Inicialización del YouTube IFrame API
+    // Inicialización de la API de YouTube
     window.onYouTubeIframeAPIReady = function() {
       cardashYt = new YT.Player('cardashPlayer', {
         width: '100%',
         height: '100%',
-        playerVars: {
-          autoplay: 0,
-          controls: 1,
-          rel: 0,
-          playsinline: 1
-        }
+        playerVars: { autoplay: 0, controls: 1, rel: 0, playsinline: 1 }
       });
 
       radioYt = new YT.Player('radioYtPlayer', {
-        width: '320',
-        height: '180',
-        playerVars: {
-          autoplay: 0,
-          controls: 0,
-          rel: 0,
-          playsinline: 1
-        },
+        width: '100%',
+        height: '100%',
+        playerVars: { autoplay: 1, controls: 0, rel: 0, playsinline: 1 },
         events: {
+          'onStateChange': onRadioYtStateChange,
           'onError': onRadioYtError
         }
       });
     };
 
-    function onRadioYtError(e) {
-      console.warn("YouTube Live Radio error, ejecutando fallback a streams de audio...", e);
-      if (window.pendingStreams && window.pendingStreams.length > 0) {
-        playStreamsInCascade(window.pendingStreams);
+    // Si YouTube Live queda en estado PAUSADO o EN ESPERA (Cued), forzar reproducción inmediata
+    function onRadioYtStateChange(event) {
+      if (activeSystem === "radio") {
+        // YT.PlayerState.PAUSED = 2, YT.PlayerState.CUED = 5
+        if (event.data === 2 || event.data === 5) {
+          event.target.playVideo();
+        }
       }
     }
 
-    // Inicialización de permisos de audio al interactuar
-    btnInit.addEventListener("click", () => {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Si el video de YouTube tiene error o bloqueo geográfico, pasar automáticamente a streams de audio
+    function onRadioYtError() {
+      radioYtDock.classList.remove("active");
+      if (pendingStreamsList.length > 0) {
+        tryNextAudioStream();
       }
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
+    }
 
-      // Desbloqueo de elementos multimedia
-      html5Audio.play().then(() => html5Audio.pause()).catch(() => {});
-      
+    // Activación de permisos de audio
+    btnInit.addEventListener("click", () => {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      radioAudio.play().then(() => radioAudio.pause()).catch(() => {});
+
       btnInit.style.display = "none";
-      statusBadge.textContent = "Receptor Conectado";
+      statusBadge.textContent = "Conectado al Vehículo";
       statusBadge.classList.add("active");
 
-      connectSSE();
+      startEventStream();
     });
 
-    // Conexión Server-Sent Events (SSE)
-    function connectSSE() {
-      const evtSource = new EventSource(`/events?userId=${userId}`);
-
-      evtSource.onmessage = function(event) {
+    function startEventStream() {
+      const sse = new EventSource(`/events?userId=${userId}`);
+      sse.onmessage = function(e) {
         try {
-          const msg = JSON.parse(event.data);
-          handleRemoteCommand(msg.system, msg.action, msg.data);
-        } catch (e) {
-          console.error("Error al procesar mensaje SSE:", e);
-        }
+          const payload = JSON.parse(e.data);
+          handleCommand(payload.system, payload.action, payload.data);
+        } catch (err) {}
       };
-
-      evtSource.onerror = function() {
+      sse.onerror = function() {
         statusBadge.textContent = "Reconectando con el vehículo...";
         statusBadge.classList.remove("active");
-        setTimeout(connectSSE, 3000);
+        setTimeout(startEventStream, 3000);
       };
     }
 
-    // Manejo de comandos enviados desde Roblox
-    function handleRemoteCommand(system, action, data) {
+    function handleCommand(system, action, data) {
       if (action === "volume") {
-        applyProximityVolume(parseInt(data, 10));
+        setProximityVolume(parseInt(data, 10));
         return;
       }
 
       if (system === "cardash") {
-        handleCarDashCommand(action, data);
+        handleCarDash(action, data);
       } else if (system === "radio") {
-        handleRadioCommand(action, data);
+        handleRadio(action, data);
       }
     }
 
-    // ==========================================
-    //   LÓGICA CARDASH MULTIMEDIA (YOUTUBE)
-    // ==========================================
-    function handleCarDashCommand(action, data) {
+    // LÓGICA CARDASH MULTIMEDIA
+    function handleCarDash(action, data) {
       if (activeSystem !== "cardash") {
-        stopRadioSystem();
+        stopRadio();
         activeSystem = "cardash";
-        cardashContainer.classList.add("visible");
-        radioContainer.classList.remove("visible");
+        cardashBox.classList.add("visible");
+        radioBox.classList.remove("visible");
       }
 
       if (action === "play") {
-        const videoId = cleanYouTubeId(data);
-        if (!videoId) return;
-
-        if (currentLoadedCardashId === videoId && cardashYt && typeof cardashYt.playVideo === "function") {
+        const id = extractYtId(data);
+        if (!id) return;
+        if (currentCardashTrackId === id && cardashYt && typeof cardashYt.playVideo === "function") {
           cardashYt.playVideo();
         } else {
-          currentLoadedCardashId = videoId;
+          currentCardashTrackId = id;
           if (cardashYt && typeof cardashYt.loadVideoById === "function") {
-            cardashYt.loadVideoById(videoId);
+            cardashYt.loadVideoById(id);
           }
         }
       } else if (action === "pause") {
@@ -304,259 +277,212 @@
       }
     }
 
-    function cleanYouTubeId(urlOrId) {
-      if (!urlOrId) return "";
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-      const match = urlOrId.match(regExp);
-      return (match && match[2].length === 11) ? match[2] : urlOrId;
+    function extractYtId(val) {
+      if (!val) return "";
+      const reg = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const m = val.match(reg);
+      return (m && m[2].length === 11) ? m[2] : val;
     }
 
-    function stopCarDashSystem() {
+    function stopCarDash() {
       if (cardashYt && typeof cardashYt.pauseVideo === "function") {
         cardashYt.pauseVideo();
       }
-      cardashContainer.classList.remove("visible");
+      cardashBox.classList.remove("visible");
     }
 
-    // ==========================================
-    //   LÓGICA ESTÉREO FM ARGENTINA (RADIO)
-    // ==========================================
-    function handleRadioCommand(action, stationId) {
+    // LÓGICA ESTÉREO RADIO FM ARGENTINA
+    function handleRadio(action, stationId) {
       if (action === "pause") {
-        stopRadioSystem();
+        stopRadio();
         activeSystem = null;
         return;
       }
 
       if (action === "play") {
         if (activeSystem !== "radio") {
-          stopCarDashSystem();
+          stopCarDash();
           activeSystem = "radio";
-          radioContainer.classList.add("visible");
-          cardashContainer.classList.remove("visible");
+          radioBox.classList.add("visible");
+          cardashBox.classList.remove("visible");
         }
 
-        tuneRadioStationWithStatic(stationId);
+        tuneStation(stationId);
       }
     }
 
-    // Proceso de Sintonización con 5 Segundos de Estática Analógica
-    function tuneRadioStationWithStatic(stationId) {
-      // Detener cualquier audio previo
-      stopAudioStreamsOnly();
+    function tuneStation(stationId) {
+      stopRadioPlayback();
 
-      // Iniciar Ruido de Estática Analógica
-      isTuningInProgress = true;
-      startAnalogStaticNoise();
+      // Iniciar los 5 segundos de ruido blanco analógico ("ashhhhh")
+      startStaticNoise();
+      radioDial.textContent = "SINTONIZANDO";
+      radioName.textContent = "Buscando emisión en vivo...";
+      staticText.style.display = "block";
+      radioYtDock.classList.remove("active");
 
-      radioDial.textContent = "BUSCANDO...";
-      radioName.textContent = "Sincronizando oscilador FM...";
-      radioStaticMsg.style.display = "block";
-
-      // Durante los 5 segundos de estática, resolver la mejor fuente en segundo plano
+      // Buscar transmisiones en vivo mientras suena la estática
       fetch(`/api/resolve-station?id=${stationId}`)
-        .then(res => res.json())
+        .then(r => r.json())
         .then(resolved => {
-          if (tuningTimer) clearTimeout(tuningTimer);
+          if (tuningTimeout) clearTimeout(tuningTimeout);
 
-          // Esperar estrictamente los 5 segundos antes de conectar la emisión
-          tuningTimer = setTimeout(() => {
-            stopAnalogStaticNoise();
-            isTuningInProgress = false;
-            radioStaticMsg.style.display = "none";
+          // Completar obligatoriamente los 5 segundos antes de conectar el audio
+          tuningTimeout = setTimeout(() => {
+            stopStaticNoise();
+            staticText.style.display = "none";
 
             if (resolved.success) {
               radioDial.textContent = resolved.dial;
               radioName.textContent = `${resolved.name} - ${resolved.city}`;
-              playResolvedSource(resolved);
+              playResolvedStation(resolved);
             } else {
-              radioName.textContent = "Emisora fuera de alcance";
+              radioName.textContent = "Señal fuera de cobertura";
             }
           }, 5000);
         })
-        .catch(err => {
-          console.error("Error al resolver emisora:", err);
-          if (tuningTimer) clearTimeout(tuningTimer);
-          tuningTimer = setTimeout(() => {
-            stopAnalogStaticNoise();
-            isTuningInProgress = false;
-            radioName.textContent = "Señal no disponible";
+        .catch(() => {
+          if (tuningTimeout) clearTimeout(tuningTimeout);
+          tuningTimeout = setTimeout(() => {
+            stopStaticNoise();
+            staticText.style.display = "none";
+            radioName.textContent = "Sin señal de radio";
           }, 5000);
         });
     }
 
-    function playResolvedSource(resolved) {
-      window.pendingStreams = resolved.streams || [];
+    function playResolvedStation(data) {
+      pendingStreamsList = [...(data.streams || [])];
 
-      // Si existe transmisión en vivo por YouTube Live, probar primero
-      if (resolved.youtubeLiveId && radioYt && typeof radioYt.loadVideoById === "function") {
-        radioYt.loadVideoById({
-          videoId: resolved.youtubeLiveId,
-          suggestedQuality: 'small'
-        });
-        radioYt.setVolume(currentProximityVol);
+      // Si se encontró una emisión en YouTube Live activa (caso Urbana Play), usarla
+      if (data.youtubeId && radioYt && typeof radioYt.loadVideoById === "function") {
+        radioYtDock.classList.add("active");
+        radioYt.loadVideoById(data.youtubeId);
+        radioYt.setVolume(currentVol);
         radioYt.playVideo();
 
-        // Verificar si reproduce correctamente tras 3.5 segundos; si no, pasar a cascada de streams
+        // Control de verificación: si tras 3 segundos no reproduce, conmutar a audio directo
         setTimeout(() => {
-          if (radioYt.getPlayerState && radioYt.getPlayerState() !== 1 && window.pendingStreams.length > 0) {
-            radioYt.stopVideo();
-            playStreamsInCascade(window.pendingStreams);
+          if (radioYt.getPlayerState && radioYt.getPlayerState() !== 1) {
+            radioYt.playVideo(); // Segundo intento de despausar
+            setTimeout(() => {
+              if (radioYt.getPlayerState && radioYt.getPlayerState() !== 1) {
+                radioYtDock.classList.remove("active");
+                tryNextAudioStream();
+              }
+            }, 1500);
           }
-        }, 3500);
-      } else if (window.pendingStreams.length > 0) {
-        playStreamsInCascade(window.pendingStreams);
+        }, 3000);
+      } else {
+        tryNextAudioStream();
       }
     }
 
-    // Cascada de reproducción automática de URLs de audio
-    function playStreamsInCascade(streamList) {
-      if (!streamList || streamList.length === 0) return;
-      const currentUrl = streamList[0];
-      const remainingUrls = streamList.slice(1);
+    function tryNextAudioStream() {
+      if (pendingStreamsList.length === 0) return;
+      const url = pendingStreamsList.shift();
 
-      html5Audio.pause();
-      if (hlsInstance) {
-        hlsInstance.destroy();
-        hlsInstance = null;
-      }
+      radioAudio.pause();
+      if (hls) { hls.destroy(); hls = null; }
 
-      if (currentUrl.includes(".m3u8")) {
+      if (url.includes(".m3u8")) {
         if (Hls.isSupported()) {
-          hlsInstance = new Hls();
-          hlsInstance.loadSource(currentUrl);
-          hlsInstance.attachMedia(html5Audio);
-          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-            html5Audio.volume = currentProximityVol / 100;
-            html5Audio.play().catch(() => playStreamsInCascade(remainingUrls));
+          hls = new Hls();
+          hls.loadSource(url);
+          hls.attachMedia(radioAudio);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            radioAudio.volume = currentVol / 100;
+            radioAudio.play().catch(() => tryNextAudioStream());
           });
-          hlsInstance.on(Hls.Events.ERROR, () => {
-            playStreamsInCascade(remainingUrls);
-          });
-        } else if (html5Audio.canPlayType('application/vnd.apple.mpegurl')) {
-          html5Audio.src = currentUrl;
-          html5Audio.volume = currentProximityVol / 100;
-          html5Audio.play().catch(() => playStreamsInCascade(remainingUrls));
+          hls.on(Hls.Events.ERROR, () => tryNextAudioStream());
+        } else if (radioAudio.canPlayType('application/vnd.apple.mpegurl')) {
+          radioAudio.src = url;
+          radioAudio.volume = currentVol / 100;
+          radioAudio.play().catch(() => tryNextAudioStream());
         }
       } else {
-        html5Audio.src = currentUrl;
-        html5Audio.volume = currentProximityVol / 100;
-        
-        const playPromise = html5Audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(err => {
-            console.warn(`Fallo al reproducir ${currentUrl}, pasando al siguiente servidor...`, err);
-            playStreamsInCascade(remainingUrls);
-          });
+        radioAudio.src = url;
+        radioAudio.volume = currentVol / 100;
+        const p = radioAudio.play();
+        if (p !== undefined) {
+          p.catch(() => tryNextAudioStream());
         }
-
-        html5Audio.onerror = () => {
-          console.warn(`Error de red en ${currentUrl}, pasando al siguiente servidor...`);
-          playStreamsInCascade(remainingUrls);
-        };
+        radioAudio.onerror = () => tryNextAudioStream();
       }
     }
 
-    function stopAudioStreamsOnly() {
-      html5Audio.pause();
-      html5Audio.removeAttribute('src');
-      html5Audio.load();
-
-      if (hlsInstance) {
-        hlsInstance.destroy();
-        hlsInstance = null;
-      }
+    function stopRadioPlayback() {
+      radioAudio.pause();
+      radioAudio.removeAttribute('src');
+      radioAudio.load();
+      if (hls) { hls.destroy(); hls = null; }
       if (radioYt && typeof radioYt.stopVideo === "function") {
         radioYt.stopVideo();
       }
+      radioYtDock.classList.remove("active");
     }
 
-    function stopRadioSystem() {
-      if (tuningTimer) clearTimeout(tuningTimer);
-      stopAnalogStaticNoise();
-      stopAudioStreamsOnly();
-      radioContainer.classList.remove("visible");
+    function stopRadio() {
+      if (tuningTimeout) clearTimeout(tuningTimeout);
+      stopStaticNoise();
+      stopRadioPlayback();
+      radioBox.classList.remove("visible");
     }
 
-    // ==========================================
-    //   SINTETIZADOR DE ESTÁTICA ANALÓGICA
-    // ==========================================
-    function startAnalogStaticNoise() {
+    // GENERADOR DE RUIDO ANALÓGICO
+    function startStaticNoise() {
       try {
-        if (!audioContext) {
-          audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioContext.state === 'suspended') {
-          audioContext.resume();
-        }
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
 
-        const bufferSize = audioContext.sampleRate * 2;
-        const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-        const output = buffer.getChannelData(0);
+        const bufferSize = audioCtx.sampleRate * 2;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const out = buffer.getChannelData(0);
 
-        // Generación de Ruido Rosa/Blanco con fluctuaciones analógicas
         let b0 = 0, b1 = 0, b2 = 0;
         for (let i = 0; i < bufferSize; i++) {
-          const white = Math.random() * 2 - 1;
-          b0 = 0.99886 * b0 + white * 0.0555179;
-          b1 = 0.99332 * b1 + white * 0.0750759;
-          b2 = 0.96900 * b2 + white * 0.1538520;
-          output[i] = (b0 + b1 + b2 + white * 0.1) * 0.12;
+          const w = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + w * 0.0555179;
+          b1 = 0.99332 * b1 + w * 0.0750759;
+          b2 = 0.96900 * b2 + w * 0.1538520;
+          out[i] = (b0 + b1 + b2 + w * 0.1) * 0.14;
         }
 
-        const whiteNoiseSource = audioContext.createBufferSource();
-        whiteNoiseSource.buffer = buffer;
-        whiteNoiseSource.loop = true;
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
 
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = (currentProximityVol / 100) * 0.35;
+        const gain = audioCtx.createGain();
+        gain.gain.value = (currentVol / 100) * 0.4;
 
-        whiteNoiseSource.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        source.connect(gain);
+        gain.connect(audioCtx.destination);
+        source.start();
 
-        whiteNoiseSource.start();
-        staticOscillatorNode = { source: whiteNoiseSource, gain: gainNode };
-      } catch (e) {
-        console.warn("No se pudo iniciar el sintetizador WebAudio:", e);
-      }
+        staticNoise = { source, gain };
+      } catch (e) {}
     }
 
-    function stopAnalogStaticNoise() {
-      if (staticOscillatorNode) {
+    function stopStaticNoise() {
+      if (staticNoise) {
         try {
-          staticOscillatorNode.source.stop();
-          staticOscillatorNode.source.disconnect();
+          staticNoise.source.stop();
+          staticNoise.source.disconnect();
         } catch (e) {}
-        staticOscillatorNode = null;
+        staticNoise = null;
       }
     }
 
-    // ==========================================
-    //   CONTROL DE VOLUMEN POR PROXIMIDAD
-    // ==========================================
-    function applyProximityVolume(volumePercent) {
-      currentProximityVol = Math.max(0, Math.min(100, volumePercent));
-      volIndicator.textContent = `Volumen de Proximidad: ${currentProximityVol}%`;
+    // CONTROL DE VOLUMEN POR PROXIMIDAD
+    function setProximityVolume(vol) {
+      currentVol = Math.max(0, Math.min(100, vol));
+      volDisplay.textContent = `Volumen de Proximidad: ${currentVol}%`;
 
-      const normalizedVol = currentProximityVol / 100;
-
-      // 1. CarDash
-      if (cardashYt && typeof cardashYt.setVolume === "function") {
-        cardashYt.setVolume(currentProximityVol);
-      }
-
-      // 2. Radio YouTube
-      if (radioYt && typeof radioYt.setVolume === "function") {
-        radioYt.setVolume(currentProximityVol);
-      }
-
-      // 3. Radio HTML5 / HLS
-      html5Audio.volume = normalizedVol;
-
-      // 4. Estática
-      if (staticOscillatorNode && staticOscillatorNode.gain) {
-        staticOscillatorNode.gain.gain.value = normalizedVol * 0.35;
-      }
+      const norm = currentVol / 100;
+      if (cardashYt && typeof cardashYt.setVolume === "function") cardashYt.setVolume(currentVol);
+      if (radioYt && typeof radioYt.setVolume === "function") radioYt.setVolume(currentVol);
+      radioAudio.volume = norm;
+      if (staticNoise && staticNoise.gain) staticNoise.gain.gain.value = norm * 0.4;
     }
   </script>
 </body>
