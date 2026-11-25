@@ -14,43 +14,68 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const sseClients = new Map();
 
-// DIAL ARGENTINO COMPLETO CON CDNs GLOBALES VERIFICADAS
+// DIAL COMPLETO DE EMISORAS ARGENTINAS CON SERVIDORES DE AUDIO DIRECTOS
 const STATIONS = {
   "caba_aspen": {
     name: "Aspen 102.3",
     dial: "102.3 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN_SC"
+    ]
+  },
+  "ros_vida": {
+    name: "FM Vida Rosario 97.9",
+    dial: "97.9 FM",
+    city: "Rosario, Santa Fe",
+    urls: [
+      "http://stream.rosario3.com/fmvida.mp3",
+      "https://stream.zeno.fm/9uvrtub5puzuv",
+      "http://streaming.rosario3.com:8000/fmvida"
+    ]
+  },
+  "caba_urbanaplay": {
+    name: "Urbana Play 104.3",
+    dial: "104.3 FM",
+    city: "Buenos Aires",
+    urls: [
+      "https://urbanaplay.stream.mediasector.es/urbanaplay-ba.mp3",
+      "http://icecast.urbanaplayfm.com/urbanaplay.mp3",
+      "https://stream.zeno.fm/f8y0u69u21zuv"
+    ]
+  },
+  "ros_1003": {
+    name: "FM 100.3 Rosario (Boing)",
+    dial: "100.3 FM",
+    city: "Rosario, Santa Fe",
+    urls: [
+      "http://stream.boing973.com/boing",
+      "https://stream.zeno.fm/6y2x37n5t7zuv"
     ]
   },
   "caba_la100": {
     name: "La 100 99.9",
     dial: "99.9 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/LA_100_SC",
-      "https://stream.cienradios.com/la100.mp3"
+    urls: [
+      "https://stream.cienradios.com/la100.mp3",
+      "https://la100.cienradios.com/la100.mp3"
     ]
   },
   "caba_mitre": {
     name: "Radio Mitre AM 790",
     dial: "790 AM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE_AM790_SC",
-      "https://stream.cienradios.com/mitremp3.mp3"
+    urls: [
+      "https://stream.cienradios.com/mitremp3.mp3",
+      "https://mitremp3.cienradios.com/mitremp3.mp3"
     ]
   },
   "caba_los40": {
     name: "Los 40 105.5",
     dial: "105.5 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARGENTINA_SC"
     ]
   },
@@ -58,80 +83,24 @@ const STATIONS = {
     name: "Radio Disney 94.3",
     dial: "94.3 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC"
-    ]
-  },
-  "caba_continental": {
-    name: "Radio Continental AM 590",
-    dial: "590 AM",
-    city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC",
-      "https://stream.zeno.fm/4w9w03hn01zuv"
-    ]
-  },
-  "caba_rivadavia": {
-    name: "Radio Rivadavia AM 630",
-    dial: "630 AM",
-    city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/RIVADAVIA_SC",
-      "https://stream.zeno.fm/k2k0mwhm5rhvv"
     ]
   },
   "cba_cadena3": {
     name: "Cadena 3 100.9",
     dial: "100.9 FM / 700 AM",
     city: "Córdoba",
-    ytChannel: null,
-    streams: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA3_SC",
-      "https://cadena3.streamguys1.com/cadena3"
-    ]
-  },
-  "ros_vida": {
-    name: "FM Vida Rosario 97.9",
-    dial: "97.9 FM",
-    city: "Rosario, Santa Fe",
-    ytChannel: "@fmvida979",
-    streams: [
-      "https://streaming.rosario3.com/fmvida/live/playlist.m3u8",
-      "https://stream.zeno.fm/9uvrtub5puzuv",
-      "http://stream.rosario3.com/fmvida.mp3"
-    ]
-  },
-  "ros_1003": {
-    name: "FM 100.3 Rosario (Boing)",
-    dial: "100.3 FM",
-    city: "Rosario, Santa Fe",
-    ytChannel: null,
-    streams: [
-      "https://stream.zeno.fm/6y2x37n5t7zuv",
-      "https://streaming.redboing.com/boing",
-      "http://stream.boing973.com/boing"
-    ]
-  },
-  "caba_urbanaplay": {
-    name: "Urbana Play 104.3",
-    dial: "104.3 FM",
-    city: "Buenos Aires",
-    ytChannel: "@UrbanaPlayFM",
-    streams: [
-      "https://urbanaplay.stream.mediasector.es/urbanaplay-ba.mp3",
-      "https://stream.zeno.fm/f8y0u69u21zuv",
-      "https://icecast.urbanaplayfm.com/urbanaplay.mp3"
+    urls: [
+      "https://cadena3.streamguys1.com/cadena3",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA3_SC"
     ]
   },
   "caba_pop": {
     name: "Pop Radio 101.5",
     dial: "101.5 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://pop.streamindalo.com.ar/pop.mp3",
       "http://stream.indalo.com.ar/pop.mp3"
     ]
@@ -140,18 +109,34 @@ const STATIONS = {
     name: "Mega 98.3",
     dial: "98.3 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://mega.streamindalo.com.ar/mega.mp3",
       "http://stream.indalo.com.ar/mega.mp3"
+    ]
+  },
+  "caba_continental": {
+    name: "Radio Continental AM 590",
+    dial: "590 AM",
+    city: "Buenos Aires",
+    urls: [
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC",
+      "https://stream.zeno.fm/4w9w03hn01zuv"
+    ]
+  },
+  "caba_rivadavia": {
+    name: "Radio Rivadavia AM 630",
+    dial: "630 AM",
+    city: "Buenos Aires",
+    urls: [
+      "https://stream.zeno.fm/k2k0mwhm5rhvv",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/RIVADAVIA_SC"
     ]
   },
   "caba_vale": {
     name: "Radio Vale 97.5",
     dial: "97.5 FM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://vale.streamindalo.com.ar/vale.mp3"
     ]
   },
@@ -159,125 +144,113 @@ const STATIONS = {
     name: "Radio 10 AM 710",
     dial: "710 AM",
     city: "Buenos Aires",
-    ytChannel: null,
-    streams: [
+    urls: [
       "https://radio10.streamindalo.com.ar/radio10.mp3"
     ]
   }
 };
 
-// Búsqueda del video en vivo activo en YouTube
-function resolveYouTubeLive(channelHandle) {
-  return new Promise((resolve) => {
-    if (!channelHandle) return resolve(null);
-    const targetUrl = `https://www.youtube.com/${channelHandle}/live`;
-    const req = https.get(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0.0.0 Safari/537.36'
-      },
-      timeout: 2500
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        const match = data.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-        if (match && match[1]) {
-          resolve(match[1]);
-        } else {
-          resolve(null);
-        }
-      });
-    });
-    req.on('error', () => resolve(null));
-    req.on('timeout', () => { req.destroy(); resolve(null); });
-  });
-}
-
-// Proxy de transmisión para convertir streams HTTP/ICY en HTTPS limpio
-function proxyAudioStream(urls, index, req, res) {
-  if (index >= urls.length) {
-    if (!res.headersSent) res.status(502).send("Servidores no disponibles");
+// Conector de audio universal: conecta a servidores HTTP o HTTPS, resuelve cabeceras ICY y emite audio limpio
+function pipeAudioStream(urls, index, req, res, redirectLimit = 0) {
+  if (index >= urls.length || redirectLimit > 5) {
+    if (!res.headersSent) {
+      res.status(502).send("Todos los servidores de la emisora están desconectados");
+    }
     return;
   }
 
   const currentUrl = urls[index];
-  let parsed;
+  let parsedUrl;
   try {
-    parsed = new URL(currentUrl);
+    parsedUrl = new URL(currentUrl);
   } catch (e) {
-    return proxyAudioStream(urls, index + 1, req, res);
+    return pipeAudioStream(urls, index + 1, req, res, 0);
   }
 
-  const client = parsed.protocol === 'https:' ? https : http;
+  const client = parsedUrl.protocol === 'https:' ? https : http;
   const options = {
-    hostname: parsed.hostname,
-    port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-    path: parsed.pathname + parsed.search,
+    hostname: parsedUrl.hostname,
+    port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+    path: parsedUrl.pathname + parsedUrl.search,
     method: 'GET',
     headers: {
-      'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0.0.0 Safari/537.36',
       'Accept': '*/*',
       'Icy-MetaData': '0'
     },
-    insecureHTTPParser: true,
+    insecureHTTPParser: true, // Crucial para admitir respuestas ICY 200 OK de FM Vida y radios argentinas
     rejectUnauthorized: false,
-    timeout: 6000
+    timeout: 7000
   };
 
-  const proxyReq = client.request(options, (upstream) => {
-    if (upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
-      let nextUrl = upstream.headers.location;
-      if (!nextUrl.startsWith('http')) nextUrl = new URL(nextUrl, currentUrl).href;
+  const proxyReq = client.request(options, (upstreamRes) => {
+    // Manejo automático de redirecciones HTTP (301, 302, 307)
+    if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400 && upstreamRes.headers.location) {
+      let nextUrl = upstreamRes.headers.location;
+      if (!nextUrl.startsWith('http')) {
+        nextUrl = new URL(nextUrl, currentUrl).href;
+      }
       proxyReq.destroy();
-      return proxyAudioStream([nextUrl, ...urls.slice(index + 1)], 0, req, res);
+      return pipeAudioStream([nextUrl, ...urls.slice(index + 1)], 0, req, res, redirectLimit + 1);
     }
 
-    if (upstream.statusCode !== 200 && upstream.statusCode !== 206) {
+    if (upstreamRes.statusCode !== 200 && upstreamRes.statusCode !== 206) {
       proxyReq.destroy();
-      return proxyAudioStream(urls, index + 1, req, res);
+      return pipeAudioStream(urls, index + 1, req, res, 0);
     }
 
+    // Cabeceras HTTPS nativas para evitar el bloqueo del navegador
     res.writeHead(200, {
-      'Content-Type': upstream.headers['content-type'] || 'audio/mpeg',
+      'Content-Type': upstreamRes.headers['content-type'] || 'audio/mpeg',
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-cache, no-store'
+      'Cache-Control': 'no-cache, no-store',
+      'Connection': 'keep-alive'
     });
 
-    upstream.pipe(res);
-    req.on('close', () => proxyReq.destroy());
+    upstreamRes.pipe(res);
+
+    req.on('close', () => {
+      proxyReq.destroy();
+    });
   });
 
-  proxyReq.on('error', () => proxyAudioStream(urls, index + 1, req, res));
-  proxyReq.on('timeout', () => { proxyReq.destroy(); proxyAudioStream(urls, index + 1, req, res); });
+  proxyReq.on('error', () => {
+    pipeAudioStream(urls, index + 1, req, res, 0);
+  });
+
+  proxyReq.on('timeout', () => {
+    proxyReq.destroy();
+    pipeAudioStream(urls, index + 1, req, res, 0);
+  });
+
   proxyReq.end();
 }
 
+// Endpoint de Streaming Seguro a través de Render
 app.get('/api/stream-proxy', (req, res) => {
   const station = STATIONS[req.query.id];
-  if (!station || !station.streams) return res.status(404).send("No encontrada");
-  proxyAudioStream(station.streams, 0, req, res);
+  if (!station || !station.urls || station.urls.length === 0) {
+    return res.status(404).send("Emisora no registrada");
+  }
+
+  pipeAudioStream(station.urls, 0, req, res, 0);
 });
 
-app.get('/api/station-info', async (req, res) => {
+// Endpoint de información para la interfaz
+app.get('/api/station-info', (req, res) => {
   const station = STATIONS[req.query.id];
   if (!station) return res.status(404).json({ error: "No encontrada" });
-
-  let ytVideoId = null;
-  if (station.ytChannel) {
-    ytVideoId = await resolveYouTubeLive(station.ytChannel);
-  }
 
   res.json({
     stationId: req.query.id,
     name: station.name,
     dial: station.dial,
     city: station.city,
-    ytVideoId: ytVideoId,
-    streams: station.streams,
     proxyUrl: `/api/stream-proxy?id=${req.query.id}&t=${Date.now()}`
   });
 });
 
+// SSE para comandos en tiempo real desde el vehículo
 app.get('/events', (req, res) => {
   const userId = req.query.userId;
   if (!userId) return res.status(400).send("Falta userId");
@@ -296,6 +269,7 @@ app.get('/events', (req, res) => {
   });
 });
 
+// Control remoto invocado desde Roblox
 app.post('/api/control', (req, res) => {
   if (req.headers['x-auth-token'] !== MASTER_KEY) return res.status(403).json({ error: "No autorizado" });
   const { userId, system, action, data } = req.body;
@@ -307,5 +281,5 @@ app.post('/api/control', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Receptor funcionando en puerto ${PORT}`);
+  console.log(`Receptor listo en puerto ${PORT}`);
 });
