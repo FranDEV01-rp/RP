@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CarDash OS - Web Receiver</title>
+    <title>CarDash OS - Receiver</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
@@ -18,9 +18,9 @@
             background: #141721;
             border: 2px solid #23293d;
             border-radius: 20px;
-            padding: 30px;
-            width: 450px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 230, 118, 0.1);
+            padding: 25px;
+            width: 420px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
             text-align: center;
         }
         .header {
@@ -28,223 +28,139 @@
             align-items: center;
             justify-content: space-between;
             border-bottom: 1px solid #23293d;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            padding-bottom: 12px;
+            margin-bottom: 15px;
         }
-        .header h1 { font-size: 20px; color: #00e676; letter-spacing: 1px; }
+        .header h1 { font-size: 18px; color: #00e676; letter-spacing: 1px; }
         .status-dot {
             width: 12px; height: 12px; background: #ff5252;
             border-radius: 50%; box-shadow: 0 0 10px #ff5252;
-            display: inline-block;
         }
         .status-dot.active { background: #00e676; box-shadow: 0 0 12px #00e676; }
         
         .input-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         input {
             flex: 1;
-            padding: 12px;
+            padding: 10px;
             background: #0a0b10;
             border: 1px solid #323b57;
-            border-radius: 10px;
+            border-radius: 8px;
             color: white;
-            font-size: 15px;
+            font-size: 14px;
             text-align: center;
             outline: none;
         }
-        input:focus { border-color: #00e676; }
-        
         button.btn-primary {
             background: #00e676;
             color: #05140b;
             font-weight: bold;
             border: none;
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 10px 18px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: 0.2s;
         }
-        button.btn-primary:hover { background: #00c853; transform: scale(1.02); }
-
         .info-card {
             background: #0d0f17;
             border: 1px solid #1c2233;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        .info-card .label { font-size: 11px; color: #6a7694; text-transform: uppercase; }
+        .info-card .value { font-size: 14px; color: #e2e8f0; font-weight: bold; margin-top: 4px; }
+
+        /* Contenedor visible de YouTube */
+        #player-wrapper {
             border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        .info-card .label { font-size: 12px; color: #6a7694; text-transform: uppercase; }
-        .info-card .value { font-size: 16px; color: #e2e8f0; font-weight: bold; margin-top: 5px; }
-
-        /* Ecualizador animado */
-        .equalizer {
+            overflow: hidden;
+            margin-top: 10px;
+            border: 1px solid #23293d;
             display: flex;
-            align-items: flex-end;
             justify-content: center;
-            gap: 5px;
-            height: 40px;
-            margin: 20px 0;
+            background: #000;
         }
-        .bar {
-            width: 6px;
-            height: 5px;
-            background: #00e676;
-            border-radius: 3px;
-            transition: height 0.15s ease;
-        }
-        .equalizer.playing .bar:nth-child(1) { animation: bounce 0.8s infinite ease alternate; }
-        .equalizer.playing .bar:nth-child(2) { animation: bounce 1.1s infinite 0.2s ease alternate; }
-        .equalizer.playing .bar:nth-child(3) { animation: bounce 0.7s infinite 0.4s ease alternate; }
-        .equalizer.playing .bar:nth-child(4) { animation: bounce 1.3s infinite 0.1s ease alternate; }
-        .equalizer.playing .bar:nth-child(5) { animation: bounce 0.9s infinite 0.3s ease alternate; }
-
-        @keyframes bounce {
-            0% { height: 8px; }
-            100% { height: 38px; }
-        }
-
-        .controls {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-        }
-        .btn-small {
-            background: #23293d;
-            border: none;
-            color: #ccc;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-        }
-        .btn-small:hover { background: #323b57; color: white; }
-
-        #player { display: none; }
     </style>
 </head>
 <body>
 
     <div class="dashboard">
         <div class="header">
-            <h1>🚗 CARDASH AUDIO</h1>
+            <h1>🚗 CARDASH RECEIVER</h1>
             <div id="statusDot" class="status-dot"></div>
         </div>
 
         <div class="input-group">
-            <input type="text" id="uid" placeholder="Pega tu UserId de Roblox">
-            <button class="btn-primary" onclick="conectar()">Vincular</button>
+            <input type="text" id="uid" placeholder="Tu UserId de Roblox">
+            <button class="btn-primary" onclick="vincular()">Vincular</button>
         </div>
 
         <div class="info-card">
-            <div class="label">Estado de la conexión</div>
-            <div class="value" id="statusText">Esperando vinculación...</div>
+            <div class="label">Pista en reproducción</div>
+            <div class="value" id="trackText">Esperando canción...</div>
         </div>
 
-        <div class="info-card">
-            <div class="label">Pista recibida de Roblox</div>
-            <div class="value" id="trackText">Ninguna canción en cola</div>
-        </div>
-
-        <div class="equalizer" id="equalizer">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-        </div>
-
-        <div class="controls">
-            <button class="btn-small" onclick="probarSonido()">🔊 Probar Sonido</button>
-            <button class="btn-small" onclick="desbloquearAudio()">🔓 Desbloquear Audio</button>
+        <!-- Video de YouTube visible para que no se bloquee -->
+        <div id="player-wrapper">
+            <div id="player"></div>
         </div>
     </div>
-
-    <!-- YouTube Player -->
-    <div id="player"></div>
 
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         let player;
-        let isReady = false;
+        let lastTimestamp = 0;
+        let syncInterval = null;
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '1',
-                width: '1',
-                playerVars: { 'autoplay': 1, 'controls': 0 },
-                events: {
-                    'onReady': () => { isReady = true; console.log("YT Player Listo"); }
+                height: '180',
+                width: '370',
+                playerVars: { 
+                    'autoplay': 1, 
+                    'controls': 1 
                 }
             });
         }
 
-        function desbloquearAudio() {
-            if (player && player.playVideo) {
-                player.playVideo();
-                alert("Audio desbloqueado por el navegador.");
-            }
-        }
-
-        function probarSonido() {
-            if (!player || !player.loadVideoById) return alert("Espera que cargue YouTube.");
-            document.getElementById('trackText').innerText = "Probando audio de prueba...";
-            document.getElementById('equalizer').classList.add('playing');
-            player.loadVideoById('dQw4w9WgXcQ');
-            player.playVideo();
-        }
-
-        function conectar() {
+        function vincular() {
             const uid = document.getElementById('uid').value.trim();
-            if (!uid) return alert("Debes ingresar tu UserId.");
+            if (!uid) return alert("Ingresa tu UserId");
 
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            statusText.innerText = "Conectando con Render...";
+            document.getElementById('statusDot').classList.add('active');
+            document.getElementById('trackText').innerText = "✅ Sincronizado. Esperando al auto...";
 
-            const es = new EventSource(`/api/stream/${uid}`);
+            if (syncInterval) clearInterval(syncInterval);
 
-            es.onopen = () => {
-                statusDot.classList.add('active');
-                statusText.innerText = "ONLINE - Conectado con éxito";
-                statusText.style.color = "#00e676";
-            };
+            // Preguntamos al servidor cada 800 milisegundos si Roblox mandó algo nuevo
+            syncInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/status/${uid}`);
+                    const data = await res.json();
 
-            es.onerror = () => {
-                statusDot.classList.remove('active');
-                statusText.innerText = "OFFLINE - Esperando al servidor...";
-                statusText.style.color = "#ff5252";
-            };
+                    // Si hay una orden nueva que no hayamos ejecutado
+                    if (data.timestamp && data.timestamp > lastTimestamp) {
+                        lastTimestamp = data.timestamp;
+                        console.log("Nueva orden recibida de Roblox:", data);
 
-            es.onmessage = (event) => {
-                const msg = JSON.parse(event.data);
-                console.log("Comando recibido:", msg);
-
-                if (msg.action === 'conectado_exitoso') {
-                    statusDot.classList.add('active');
-                    statusText.innerText = "ONLINE - Listo para recibir órdenes";
-                    statusText.style.color = "#00e676";
+                        if (data.action === 'play' && player && player.loadVideoById) {
+                            document.getElementById('trackText').innerText = "Reproduciendo: " + data.data;
+                            player.loadVideoById(data.data);
+                            player.playVideo();
+                        } else if (data.action === 'pause' && player && player.pauseVideo) {
+                            document.getElementById('trackText').innerText = "Pausado desde el auto";
+                            player.pauseVideo();
+                        } else if (data.action === 'volume' && player && player.setVolume) {
+                            player.setVolume(Number(data.data));
+                        }
+                    }
+                } catch (e) {
+                    console.log("Error sincronizando:", e);
                 }
-
-                if (msg.action === 'play' && player && player.loadVideoById) {
-                    document.getElementById('trackText').innerText = "ID: " + msg.data;
-                    document.getElementById('equalizer').classList.add('playing');
-                    player.loadVideoById(msg.data);
-                    player.playVideo();
-                }
-
-                if (msg.action === 'pause' && player && player.pauseVideo) {
-                    document.getElementById('trackText').innerText = "Pausado";
-                    document.getElementById('equalizer').classList.remove('playing');
-                    player.pauseVideo();
-                }
-
-                if (msg.action === 'volume' && player && player.setVolume) {
-                    player.setVolume(Number(msg.data));
-                }
-            };
+            }, 800);
         }
     </script>
 </body>
