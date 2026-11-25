@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Receptor de Audio del Vehículo</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -108,12 +109,12 @@
     <br>
     <button id="btnInit" class="btn-init">Activar Audio del Vehículo</button>
 
-    <!-- CarDash Pantalla Multimedia (YouTube) -->
+    <!-- CarDash Multimedia (YouTube) -->
     <div id="cardashBox" class="cardash-box">
       <div id="cardashPlayer"></div>
     </div>
 
-    <!-- Estéreo Radio FM Argentina (Audio de Emisoras Oficiales) -->
+    <!-- Estéreo Radio FM Argentina Oficial -->
     <div id="radioBox" class="radio-box">
       <div id="radioDial" class="radio-dial">---.- FM</div>
       <div id="radioName" class="radio-name">Buscando señal...</div>
@@ -129,12 +130,15 @@
   <script>
     let audioCtx = null;
     let cardashYt = null;
+    let hlsInstance = null;
 
     let activeSystem = null; // "cardash" | "radio"
     let currentVol = 100;
     let currentCardashTrackId = "";
     let tuningTimeout = null;
     let staticNoise = null;
+    let streamQueue = [];
+    let isRetrying = false;
 
     const radioAudio = document.getElementById("radioAudio");
     const statusBadge = document.getElementById("statusBadge");
@@ -149,7 +153,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get("userId") || "3618165542";
 
-    // Inicialización del reproductor CarDash para videos multimedia
     window.onYouTubeIframeAPIReady = function() {
       cardashYt = new YT.Player('cardashPlayer', {
         width: '100%',
@@ -158,12 +161,10 @@
       });
     };
 
-    // Botón de activación: desbloquea el audio del navegador para reproducir sin trabas
     btnInit.addEventListener("click", () => {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume();
 
-      // Desbloqueo del elemento nativo de audio
       radioAudio.play().then(() => radioAudio.pause()).catch(() => {});
 
       btnInit.style.display = "none";
@@ -254,35 +255,28 @@
     }
 
     function tuneStation(stationId) {
-      // 1. Detener audio anterior de inmediato
       stopRadioAudio();
 
-      // 2. Iniciar exactamente los 5 segundos de estática analógica
+      // Iniciar 5 segundos obligatorios de ruido blanco analógico ("ashhhhh")
       startStaticNoise();
       radioDial.textContent = "BUSCANDO...";
-      radioName.textContent = "Alineando frecuencia de radio...";
+      radioName.textContent = "Sintonizando frecuencia FM...";
       staticText.style.display = "block";
 
-      // Obtener metadatos y canal de streaming de la emisora
       fetch(`/api/station-info?id=${stationId}`)
         .then(r => r.json())
         .then(info => {
           if (tuningTimeout) clearTimeout(tuningTimeout);
 
-          // Esperar estrictamente los 5 segundos completos de estática
+          // Esperar estrictamente los 5 segundos de estática antes de soltar el audio
           tuningTimeout = setTimeout(() => {
             stopStaticNoise();
             staticText.style.display = "none";
             radioDial.textContent = info.dial;
             radioName.textContent = `${info.name} - ${info.city}`;
 
-            // Conectar directamente al túnel de audio seguro del servidor
-            radioAudio.src = info.proxyUrl;
-            radioAudio.volume = currentVol / 100;
-            radioAudio.play().catch(err => {
-              console.warn("Reintentando reproducir stream...", err);
-              setTimeout(() => radioAudio.play().catch(() => {}), 1000);
-            });
+            streamQueue = [...info.streams];
+            playNextStream();
           }, 5000);
         })
         .catch(() => {
@@ -295,22 +289,64 @@
         });
     }
 
+    function playNextStream() {
+      if (isRetrying) return;
+      if (streamQueue.length === 0) {
+        radioName.textContent = "Reconectando con la emisora...";
+        return;
+      }
+
+      isRetrying = true;
+      setTimeout(() => { isRetrying = false; }, 800);
+
+      const url = streamQueue.shift();
+      stopRadioAudio();
+
+      if (url.includes(".m3u8")) {
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(url);
+          hlsInstance.attachMedia(radioAudio);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            radioAudio.volume = currentVol / 100;
+            radioAudio.play().catch(() => playNextStream());
+          });
+          hlsInstance.on(Hls.Events.ERROR, () => playNextStream());
+        } else if (radioAudio.canPlayType('application/vnd.apple.mpegurl')) {
+          radioAudio.src = url;
+          radioAudio.volume = currentVol / 100;
+          radioAudio.play().catch(() => playNextStream());
+        }
+      } else {
+        radioAudio.src = url;
+        radioAudio.volume = currentVol / 100;
+        const playPromise = radioAudio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(() => playNextStream());
+        }
+        radioAudio.onerror = () => playNextStream();
+      }
+    }
+
     function stopRadioAudio() {
       radioAudio.pause();
       radioAudio.removeAttribute('src');
       radioAudio.load();
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
     }
 
     function stopRadio() {
       if (tuningTimeout) clearTimeout(tuningTimeout);
       stopStaticNoise();
       stopRadioAudio();
+      streamQueue = [];
       radioBox.classList.remove("visible");
     }
 
-    // ==========================================
-    //   GENERADOR DE RUIDO ANALÓGICO ("ashhhhh")
-    // ==========================================
+    // Generador de Ruido Analógico con Web Audio API ("ashhhhh")
     function startStaticNoise() {
       try {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -354,9 +390,7 @@
       }
     }
 
-    // ==========================================
-    //   CONTROL DE PROXIMIDAD DEL VEHÍCULO
-    // ==========================================
+    // Atenuación de Volumen por Proximidad del Vehículo
     function setProximityVolume(vol) {
       currentVol = Math.max(0, Math.min(100, vol));
       volDisplay.textContent = `Volumen de Proximidad: ${currentVol}%`;
