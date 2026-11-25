@@ -2,415 +2,562 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Receptor Vehicular - CarDash & Radio Argentina</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receptor de Audio del Vehículo</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: #0b0e17; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-    .container { width: 100%; max-width: 780px; background: #131826; border-radius: 16px; padding: 24px; border: 1px solid #232b40; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
-    h1 { font-size: 22px; text-align: center; margin-bottom: 4px; }
-    .subtitle { text-align: center; font-size: 13px; color: #7a889b; margin-bottom: 20px; }
-    
-    .unlock-banner { background: #f59e0b; color: #000; padding: 14px; border-radius: 10px; font-weight: 800; text-align: center; margin-bottom: 20px; cursor: pointer; animation: pulse 1.6s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
-
-    .user-box { display: flex; gap: 10px; margin-bottom: 20px; background: #1a2033; padding: 12px; border-radius: 10px; }
-    input[type="text"] { flex: 1; background: #0c0f18; border: 1px solid #2d3752; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; outline: none; }
-    button { background: #3b82f6; color: #fff; border: none; border-radius: 8px; padding: 10px 18px; font-weight: bold; cursor: pointer; }
-
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } }
-
-    .card { background: #171c2b; border-radius: 12px; padding: 18px; border: 2px solid #242c42; transition: 0.3s; display: flex; flex-direction: column; justify-content: space-between; }
-    .card.active { border-color: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
-    
-    .card-title { font-size: 13px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .tag { font-size: 10px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
-    .tag-live { background: #ef4444; color: #fff; }
-    .tag-yt { background: #ff0000; color: #fff; }
-
-    .station-name { font-size: 17px; font-weight: bold; color: #60a5fa; min-height: 44px; }
-    .vol-display { font-size: 13px; color: #94a3b8; margin-top: 10px; }
-    .status-text { font-size: 12px; font-weight: bold; margin-top: 5px; color: #10b981; }
-    .status-text.tuning { color: #f59e0b; }
-    .source-tag { font-size: 11px; color: #38bdf8; margin-top: 4px; font-weight: bold; }
-
-    .yt-frame-wrapper { border-radius: 10px; overflow: hidden; background: #000; width: 100%; aspect-ratio: 16/9; margin-top: 12px; }
-    iframe { width: 100%; height: 100%; border: none; }
-
-    .radio-box { height: 120px; background: #0d111c; border-radius: 10px; margin-top: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; color: #64748b; border: 1px dashed #242d45; text-align: center; padding: 10px; }
-
-    /* REPRODUCTOR EN VIVO DE RADIO EN MODO SOLO AUDIO (100% INVISIBLE) */
-    .hidden-live-audio {
-      position: absolute;
-      top: -3000px;
-      left: -3000px;
-      width: 200px;
-      height: 200px;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 640px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    h1 {
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+      color: #58a6ff;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      background: #21262d;
+      color: #8b949e;
+      border: 1px solid #30363d;
+    }
+    .status-badge.active {
+      background: #238636;
+      color: #ffffff;
+      border-color: #2ea043;
+    }
+    .btn-init {
+      background: #238636;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: background 0.2s;
+    }
+    .btn-init:hover {
+      background: #2ea043;
+    }
+    .cardash-viewport {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 16px;
+      display: none;
+    }
+    .cardash-viewport.visible {
+      display: block;
+    }
+    .radio-display {
+      background: #0a0c10;
+      border: 1px solid #1f242c;
+      border-radius: 8px;
+      padding: 18px;
+      margin-top: 16px;
+      display: none;
+    }
+    .radio-display.visible {
+      display: block;
+    }
+    .radio-dial {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #f0883e;
+      font-family: monospace;
+    }
+    .radio-name {
+      font-size: 1.1rem;
+      color: #c9d1d9;
+      margin-top: 4px;
+    }
+    .radio-static-anim {
+      font-size: 0.9rem;
+      color: #8b949e;
+      margin-top: 8px;
+      font-style: italic;
+    }
+    .vol-indicator {
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #8b949e;
+    }
+    /* Contenedor off-screen de YouTube para que el navegador mantenga el renderizado activo sin pausar el audio */
+    #radio-yt-wrapper {
+      position: fixed;
+      top: -9999px;
+      left: -9999px;
+      width: 320px;
+      height: 180px;
       opacity: 0.001;
       pointer-events: none;
+      z-index: -100;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-    <h1>Receptor Vehicular Sincronizado</h1>
-    <div class="subtitle">Multimedia CarDash & Stereo FM con Buscador Web en Vivo</div>
+  <div class="panel">
+    <h1>Receptor de Sonido del Vehículo</h1>
+    <div id="statusBadge" class="status-badge">Desconectado - Pulsa Activar</div>
+    <br>
+    <button id="btnInit" class="btn-init">Activar Audio del Vehículo</button>
 
-    <div id="unlockBtn" class="unlock-banner" onclick="unlockAudio()">
-      🔊 HACÉ CLICK AQUÍ PARA HABILITAR EL AUDIO EN EL NAVEGADOR
+    <!-- Reproductor CarDash (Pantalla Multimedia) -->
+    <div id="cardashContainer" class="cardash-viewport">
+      <div id="cardashPlayer"></div>
     </div>
 
-    <div class="user-box">
-      <input type="text" id="userIdInput" placeholder="Ingresá tu Roblox UserId (ej: 3618165542)">
-      <button onclick="saveUserId()">Conectar</button>
+    <!-- Pantalla Estéreo FM Argentina -->
+    <div id="radioContainer" class="radio-display">
+      <div id="radioDial" class="radio-dial">---.- FM</div>
+      <div id="radioName" class="radio-name">Buscando señal...</div>
+      <div id="radioStaticMsg" class="radio-static-anim" style="display: none;">Sintonizando señal analógica...</div>
     </div>
 
-    <div class="grid">
-      <!-- CARDASH (YOUTUBE MULTIMEDIA) -->
-      <div id="cardashCard" class="card">
-        <div>
-          <div class="card-title">
-            <span>CarDash Multimedia</span>
-            <span class="tag tag-yt">YouTube</span>
-          </div>
-          <div class="station-name" id="cardashTitle">En espera...</div>
-          <div class="vol-display" id="cardashVol">Volumen: 100%</div>
-          <div class="status-text" id="cardashStatus">Listo</div>
-        </div>
-        <div class="yt-frame-wrapper">
-          <div id="cardash-yt-player"></div>
-        </div>
-      </div>
-
-      <!-- STEREO FM NACIONAL -->
-      <div id="radioCard" class="card">
-        <div>
-          <div class="card-title">
-            <span>Stereo FM Nacional</span>
-            <span class="tag tag-live">EN VIVO ARG</span>
-          </div>
-          <div class="station-name" id="radioStationTitle">Urbana Play 104.3</div>
-          <div class="vol-display" id="radioVol">Volumen: 100%</div>
-          <div class="status-text" id="radioStatus">Radio apagada</div>
-          <div class="source-tag" id="radioSourceText"></div>
-        </div>
-        <div class="radio-box" id="radioWaveBox">
-          📻 Sintonizador en Vivo Inteligente<br>
-          <small style="color:#64748b; margin-top:4px;">Rastreo web en tiempo real</small>
-        </div>
-      </div>
-    </div>
+    <div id="volIndicator" class="vol-indicator">Volumen de Proximidad: 100%</div>
   </div>
 
-  <audio id="nativeRadioAudio" preload="auto"></audio>
-
-  <!-- YouTube oculto para emisoras transmitiendo en vivo (Solo Audio) -->
-  <div class="hidden-live-audio">
-    <div id="radio-yt-player"></div>
+  <!-- Contenedor fuera de pantalla para transmisiones de YouTube Live -->
+  <div id="radio-yt-wrapper">
+    <div id="radioYtPlayer"></div>
   </div>
 
+  <!-- Audio HTML5 para streaming directo de emisoras -->
+  <audio id="html5Audio" preload="none"></audio>
+
+  <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    const NOMBRES_ESTACIONES = {
-      "caba_urbanaplay": "Urbana Play 104.3",
-      "ros_vida": "FM Vida Rosario 97.9",
-      "caba_aspen": "Aspen 102.3",
-      "caba_la100": "La 100 (99.9)",
-      "caba_mega": "Mega 98.3 Puro Rock",
-      "caba_pop": "Pop Radio 101.5",
-      "cba_cadena3": "Cadena 3 Córdoba 100.9",
-      "caba_mitre": "Radio Mitre AM 790"
-    };
-
-    // GENERADOR DE RUIDO DE ESTÁTICA ANALÓGICA ("ashhh")
-    class RadioStaticEngine {
-      constructor() {
-        this.ctx = null;
-        this.source = null;
-        this.gain = null;
-        this.isPlaying = false;
-      }
-      init() {
-        if (!this.ctx) {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          this.ctx = new AudioContext();
-        }
-        if (this.ctx.state === 'suspended') this.ctx.resume();
-      }
-      start(volume = 1) {
-        this.init();
-        if (this.isPlaying) return;
-        this.isPlaying = true;
-
-        const bufferSize = this.ctx.sampleRate * 2;
-        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const output = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          output[i] = Math.random() * 2 - 1;
-        }
-
-        this.source = this.ctx.createBufferSource();
-        this.source.buffer = noiseBuffer;
-        this.source.loop = true;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 1400;
-        filter.Q.value = 1.2;
-
-        this.gain = this.ctx.createGain();
-        this.gain.gain.value = volume * 0.18;
-
-        this.source.connect(filter);
-        filter.connect(this.gain);
-        this.gain.connect(this.ctx.destination);
-        this.source.start(0);
-      }
-      stop() {
-        if (this.source) {
-          try { this.source.stop(); } catch(e) {}
-          this.source.disconnect();
-          this.source = null;
-        }
-        this.isPlaying = false;
-      }
-      setVolume(volume) {
-        if (this.gain && this.isPlaying) {
-          this.gain.gain.value = (volume / 100) * 0.18;
-        }
-      }
-    }
-
-    const staticEngine = new RadioStaticEngine();
+    let audioContext = null;
     let cardashYt = null;
     let radioYt = null;
     let hlsInstance = null;
-    let audioUnlocked = false;
 
+    let activeSystem = null; // "cardash" | "radio" | null
+    let currentProximityVol = 100;
     let currentLoadedCardashId = "";
-    let currentStationId = "";
-    let resolvedData = null;
+    let isTuningInProgress = false;
     let tuningTimer = null;
-    let isTuning = false;
+    let staticOscillatorNode = null;
 
-    const radioAudio = document.getElementById('nativeRadioAudio');
-    const unlockBtn = document.getElementById('unlockBtn');
-    const userIdInput = document.getElementById('userIdInput');
-    const radioStatus = document.getElementById('radioStatus');
-    const radioSourceText = document.getElementById('radioSourceText');
+    const html5Audio = document.getElementById("html5Audio");
+    const statusBadge = document.getElementById("statusBadge");
+    const btnInit = document.getElementById("btnInit");
+    const cardashContainer = document.getElementById("cardashContainer");
+    const radioContainer = document.getElementById("radioContainer");
+    const radioDial = document.getElementById("radioDial");
+    const radioName = document.getElementById("radioName");
+    const radioStaticMsg = document.getElementById("radioStaticMsg");
+    const volIndicator = document.getElementById("volIndicator");
 
-    let currentUserId = localStorage.getItem('cardash_user_id') || '3618165542';
-    userIdInput.value = currentUserId;
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get("userId") || "3618165542";
 
-    function saveUserId() {
-      currentUserId = userIdInput.value.trim();
-      localStorage.setItem('cardash_user_id', currentUserId);
-      alert('Conectado a UserId: ' + currentUserId);
-    }
-
-    function unlockAudio() {
-      audioUnlocked = true;
-      unlockBtn.style.display = 'none';
-      staticEngine.init();
-      radioAudio.play().then(() => radioAudio.pause()).catch(() => {});
-      if (cardashYt && cardashYt.playVideo) cardashYt.playVideo();
-      if (radioYt && radioYt.playVideo) radioYt.playVideo();
-    }
-
-    function onYouTubeIframeAPIReady() {
-      cardashYt = new YT.Player('cardash-yt-player', {
-        height: '100%',
+    // Inicialización del YouTube IFrame API
+    window.onYouTubeIframeAPIReady = function() {
+      cardashYt = new YT.Player('cardashPlayer', {
         width: '100%',
-        playerVars: { 'autoplay': 1, 'controls': 1, 'playsinline': 1 }
-      });
-
-      // YouTube de radio (Solo Audio)
-      radioYt = new YT.Player('radio-yt-player', {
-        height: '200',
-        width: '200',
-        playerVars: { 'autoplay': 1, 'controls': 0, 'playsinline': 1 },
-        events: {
-          'onStateChange': (e) => {
-            if (e.data === YT.PlayerState.PLAYING) {
-              radioStatus.innerText = "En vivo";
-              radioStatus.className = "status-text";
-            }
-          }
+        height: '100%',
+        playerVars: {
+          autoplay: 0,
+          controls: 1,
+          rel: 0,
+          playsinline: 1
         }
       });
+
+      radioYt = new YT.Player('radioYtPlayer', {
+        width: '320',
+        height: '180',
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          rel: 0,
+          playsinline: 1
+        },
+        events: {
+          'onError': onRadioYtError
+        }
+      });
+    };
+
+    function onRadioYtError(e) {
+      console.warn("YouTube Live Radio error, ejecutando fallback a streams de audio...", e);
+      if (window.pendingStreams && window.pendingStreams.length > 0) {
+        playStreamsInCascade(window.pendingStreams);
+      }
     }
 
-    function stopAllRadioPlayback() {
+    // Inicialización de permisos de audio al interactuar
+    btnInit.addEventListener("click", () => {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+
+      // Desbloqueo de elementos multimedia
+      html5Audio.play().then(() => html5Audio.pause()).catch(() => {});
+      
+      btnInit.style.display = "none";
+      statusBadge.textContent = "Receptor Conectado";
+      statusBadge.classList.add("active");
+
+      connectSSE();
+    });
+
+    // Conexión Server-Sent Events (SSE)
+    function connectSSE() {
+      const evtSource = new EventSource(`/events?userId=${userId}`);
+
+      evtSource.onmessage = function(event) {
+        try {
+          const msg = JSON.parse(event.data);
+          handleRemoteCommand(msg.system, msg.action, msg.data);
+        } catch (e) {
+          console.error("Error al procesar mensaje SSE:", e);
+        }
+      };
+
+      evtSource.onerror = function() {
+        statusBadge.textContent = "Reconectando con el vehículo...";
+        statusBadge.classList.remove("active");
+        setTimeout(connectSSE, 3000);
+      };
+    }
+
+    // Manejo de comandos enviados desde Roblox
+    function handleRemoteCommand(system, action, data) {
+      if (action === "volume") {
+        applyProximityVolume(parseInt(data, 10));
+        return;
+      }
+
+      if (system === "cardash") {
+        handleCarDashCommand(action, data);
+      } else if (system === "radio") {
+        handleRadioCommand(action, data);
+      }
+    }
+
+    // ==========================================
+    //   LÓGICA CARDASH MULTIMEDIA (YOUTUBE)
+    // ==========================================
+    function handleCarDashCommand(action, data) {
+      if (activeSystem !== "cardash") {
+        stopRadioSystem();
+        activeSystem = "cardash";
+        cardashContainer.classList.add("visible");
+        radioContainer.classList.remove("visible");
+      }
+
+      if (action === "play") {
+        const videoId = cleanYouTubeId(data);
+        if (!videoId) return;
+
+        if (currentLoadedCardashId === videoId && cardashYt && typeof cardashYt.playVideo === "function") {
+          cardashYt.playVideo();
+        } else {
+          currentLoadedCardashId = videoId;
+          if (cardashYt && typeof cardashYt.loadVideoById === "function") {
+            cardashYt.loadVideoById(videoId);
+          }
+        }
+      } else if (action === "pause") {
+        if (cardashYt && typeof cardashYt.pauseVideo === "function") {
+          cardashYt.pauseVideo();
+        }
+      }
+    }
+
+    function cleanYouTubeId(urlOrId) {
+      if (!urlOrId) return "";
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+      const match = urlOrId.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : urlOrId;
+    }
+
+    function stopCarDashSystem() {
+      if (cardashYt && typeof cardashYt.pauseVideo === "function") {
+        cardashYt.pauseVideo();
+      }
+      cardashContainer.classList.remove("visible");
+    }
+
+    // ==========================================
+    //   LÓGICA ESTÉREO FM ARGENTINA (RADIO)
+    // ==========================================
+    function handleRadioCommand(action, stationId) {
+      if (action === "pause") {
+        stopRadioSystem();
+        activeSystem = null;
+        return;
+      }
+
+      if (action === "play") {
+        if (activeSystem !== "radio") {
+          stopCarDashSystem();
+          activeSystem = "radio";
+          radioContainer.classList.add("visible");
+          cardashContainer.classList.remove("visible");
+        }
+
+        tuneRadioStationWithStatic(stationId);
+      }
+    }
+
+    // Proceso de Sintonización con 5 Segundos de Estática Analógica
+    function tuneRadioStationWithStatic(stationId) {
+      // Detener cualquier audio previo
+      stopAudioStreamsOnly();
+
+      // Iniciar Ruido de Estática Analógica
+      isTuningInProgress = true;
+      startAnalogStaticNoise();
+
+      radioDial.textContent = "BUSCANDO...";
+      radioName.textContent = "Sincronizando oscilador FM...";
+      radioStaticMsg.style.display = "block";
+
+      // Durante los 5 segundos de estática, resolver la mejor fuente en segundo plano
+      fetch(`/api/resolve-station?id=${stationId}`)
+        .then(res => res.json())
+        .then(resolved => {
+          if (tuningTimer) clearTimeout(tuningTimer);
+
+          // Esperar estrictamente los 5 segundos antes de conectar la emisión
+          tuningTimer = setTimeout(() => {
+            stopAnalogStaticNoise();
+            isTuningInProgress = false;
+            radioStaticMsg.style.display = "none";
+
+            if (resolved.success) {
+              radioDial.textContent = resolved.dial;
+              radioName.textContent = `${resolved.name} - ${resolved.city}`;
+              playResolvedSource(resolved);
+            } else {
+              radioName.textContent = "Emisora fuera de alcance";
+            }
+          }, 5000);
+        })
+        .catch(err => {
+          console.error("Error al resolver emisora:", err);
+          if (tuningTimer) clearTimeout(tuningTimer);
+          tuningTimer = setTimeout(() => {
+            stopAnalogStaticNoise();
+            isTuningInProgress = false;
+            radioName.textContent = "Señal no disponible";
+          }, 5000);
+        });
+    }
+
+    function playResolvedSource(resolved) {
+      window.pendingStreams = resolved.streams || [];
+
+      // Si existe transmisión en vivo por YouTube Live, probar primero
+      if (resolved.youtubeLiveId && radioYt && typeof radioYt.loadVideoById === "function") {
+        radioYt.loadVideoById({
+          videoId: resolved.youtubeLiveId,
+          suggestedQuality: 'small'
+        });
+        radioYt.setVolume(currentProximityVol);
+        radioYt.playVideo();
+
+        // Verificar si reproduce correctamente tras 3.5 segundos; si no, pasar a cascada de streams
+        setTimeout(() => {
+          if (radioYt.getPlayerState && radioYt.getPlayerState() !== 1 && window.pendingStreams.length > 0) {
+            radioYt.stopVideo();
+            playStreamsInCascade(window.pendingStreams);
+          }
+        }, 3500);
+      } else if (window.pendingStreams.length > 0) {
+        playStreamsInCascade(window.pendingStreams);
+      }
+    }
+
+    // Cascada de reproducción automática de URLs de audio
+    function playStreamsInCascade(streamList) {
+      if (!streamList || streamList.length === 0) return;
+      const currentUrl = streamList[0];
+      const remainingUrls = streamList.slice(1);
+
+      html5Audio.pause();
       if (hlsInstance) {
         hlsInstance.destroy();
         hlsInstance = null;
       }
-      radioAudio.pause();
-      radioAudio.src = "";
-      if (radioYt && radioYt.pauseVideo) {
-        try { radioYt.pauseVideo(); } catch(e) {}
-      }
-    }
 
-    // ACTIVAR LA SEÑAL ENCONTRADA EN EL RASTREO
-    function playResolvedStream(res, volume) {
-      if (!res) {
-        radioStatus.innerText = "Sin señal";
-        return;
-      }
-
-      radioSourceText.innerText = res.source || "Señal encontrada";
-
-      if (res.type === 'youtube' && radioYt && radioYt.loadVideoById) {
-        radioAudio.pause();
-        radioAudio.src = "";
-        radioYt.loadVideoById(res.id);
-        radioYt.setVolume(volume);
-        if (audioUnlocked) radioYt.playVideo();
-      } 
-      else if (res.type === 'hls' && Hls.isSupported()) {
-        if (hlsInstance) hlsInstance.destroy();
-        hlsInstance = new Hls({ enableWorker: true });
-        hlsInstance.loadSource(res.url);
-        hlsInstance.attachMedia(radioAudio);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          radioAudio.volume = volume / 100;
-          if (audioUnlocked && volume > 0) radioAudio.play().catch(() => {});
-        });
-        radioStatus.innerText = "En vivo (HLS Web)";
-      } 
-      else {
-        // Audio normal (MP3 / Stream)
-        radioAudio.src = res.url;
-        radioAudio.volume = volume / 100;
-        radioAudio.load();
-        if (audioUnlocked && volume > 0) {
-          radioAudio.play().then(() => {
-            radioStatus.innerText = "En vivo";
-          }).catch(() => {});
+      if (currentUrl.includes(".m3u8")) {
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(currentUrl);
+          hlsInstance.attachMedia(html5Audio);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            html5Audio.volume = currentProximityVol / 100;
+            html5Audio.play().catch(() => playStreamsInCascade(remainingUrls));
+          });
+          hlsInstance.on(Hls.Events.ERROR, () => {
+            playStreamsInCascade(remainingUrls);
+          });
+        } else if (html5Audio.canPlayType('application/vnd.apple.mpegurl')) {
+          html5Audio.src = currentUrl;
+          html5Audio.volume = currentProximityVol / 100;
+          html5Audio.play().catch(() => playStreamsInCascade(remainingUrls));
         }
+      } else {
+        html5Audio.src = currentUrl;
+        html5Audio.volume = currentProximityVol / 100;
+        
+        const playPromise = html5Audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(err => {
+            console.warn(`Fallo al reproducir ${currentUrl}, pasando al siguiente servidor...`, err);
+            playStreamsInCascade(remainingUrls);
+          });
+        }
+
+        html5Audio.onerror = () => {
+          console.warn(`Error de red en ${currentUrl}, pasando al siguiente servidor...`);
+          playStreamsInCascade(remainingUrls);
+        };
       }
     }
 
-    async function pollStatus() {
-      if (!currentUserId) return;
+    function stopAudioStreamsOnly() {
+      html5Audio.pause();
+      html5Audio.removeAttribute('src');
+      html5Audio.load();
 
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+      if (radioYt && typeof radioYt.stopVideo === "function") {
+        radioYt.stopVideo();
+      }
+    }
+
+    function stopRadioSystem() {
+      if (tuningTimer) clearTimeout(tuningTimer);
+      stopAnalogStaticNoise();
+      stopAudioStreamsOnly();
+      radioContainer.classList.remove("visible");
+    }
+
+    // ==========================================
+    //   SINTETIZADOR DE ESTÁTICA ANALÓGICA
+    // ==========================================
+    function startAnalogStaticNoise() {
       try {
-        const res = await fetch(`/api/status/${currentUserId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-
-        const cardash = data.cardash;
-        const radio = data.radio;
-        const activeSys = data.activeSystem;
-
-        document.getElementById('cardashCard').classList.toggle('active', activeSys === 'cardash' && cardash.isPlaying);
-        document.getElementById('radioCard').classList.toggle('active', activeSys === 'radio' && radio.isPlaying);
-
-        // --- 1. CARDASH YOUTUBE MULTIMEDIA ---
-        document.getElementById('cardashVol').innerText = `Volumen: ${cardash.volume}%`;
-        if (cardashYt && cardashYt.loadVideoById) {
-          if (activeSys === 'cardash' && cardash.isPlaying && cardash.videoId) {
-            if (currentLoadedCardashId !== cardash.videoId) {
-              currentLoadedCardashId = cardash.videoId;
-              cardashYt.loadVideoById(cardash.videoId);
-              document.getElementById('cardashTitle').innerText = "Track ID: " + cardash.videoId;
-              document.getElementById('cardashStatus').innerText = "Reproduciendo";
-            } else {
-              const state = cardashYt.getPlayerState();
-              if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING && audioUnlocked) {
-                cardashYt.playVideo();
-                document.getElementById('cardashStatus').innerText = "Reanudado";
-              }
-            }
-            cardashYt.setVolume(cardash.volume);
-          } else {
-            if (cardashYt.getPlayerState && cardashYt.getPlayerState() === YT.PlayerState.PLAYING) {
-              cardashYt.pauseVideo();
-              document.getElementById('cardashStatus').innerText = "Pausado";
-            }
-          }
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
         }
 
-        // --- 2. RADIO FM CON BÚSQUEDA WEB EN TIEMPO REAL ---
-        document.getElementById('radioVol').innerText = `Volumen: ${radio.volume}%`;
+        const bufferSize = audioContext.sampleRate * 2;
+        const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+        const output = buffer.getChannelData(0);
 
-        if (activeSys === 'radio' && radio.isPlaying) {
-          
-          if (currentStationId !== radio.stationId) {
-            currentStationId = radio.stationId;
-            isTuning = true;
-            resolvedData = null;
-
-            stopAllRadioPlayback();
-
-            // Iniciar estática analógica "ashhh"
-            if (audioUnlocked) staticEngine.start(radio.volume / 100);
-
-            radioStatus.innerText = "Buscando transmisión web en vivo... (5s)";
-            radioStatus.className = "status-text tuning";
-            radioSourceText.innerText = "Rastreando páginas y directos...";
-
-            const nom = NOMBRES_ESTACIONES[radio.stationId] || radio.stationId.toUpperCase();
-            document.getElementById('radioStationTitle').innerText = nom;
-
-            // RASTREO EN VIVO: Se ejecuta inmediatamente en segundo plano
-            fetch(`/api/resolve-radio/${radio.stationId}`)
-              .then(r => r.json())
-              .then(d => { resolvedData = d; })
-              .catch(() => {});
-
-            if (tuningTimer) clearTimeout(tuningTimer);
-
-            // Al cumplirse los 5 segundos de estática exactos:
-            tuningTimer = setTimeout(() => {
-              isTuning = false;
-              staticEngine.stop(); // Se apaga la estática analógica
-
-              // Activa la transmisión que encontró en la web
-              playResolvedStream(resolvedData, radio.volume);
-            }, 5000);
-          }
-
-          // VOLUMEN POR PROXIMIDAD
-          if (isTuning) {
-            staticEngine.setVolume(radio.volume);
-          } else {
-            const volFrac = Math.max(0, Math.min(1, radio.volume / 100));
-
-            // Silencio absoluto si te alejás caminando
-            if (radio.volume <= 0) {
-              radioAudio.muted = true;
-              if (radioYt && radioYt.setVolume) radioYt.setVolume(0);
-            } else {
-              radioAudio.muted = false;
-              radioAudio.volume = volFrac;
-              if (radioYt && radioYt.setVolume) radioYt.setVolume(radio.volume);
-            }
-          }
-
-        } else {
-          if (isTuning) {
-            clearTimeout(tuningTimer);
-            isTuning = false;
-          }
-          staticEngine.stop();
-          stopAllRadioPlayback();
-          radioStatus.innerText = "Radio apagada";
-          radioStatus.className = "status-text";
-          radioSourceText.innerText = "";
-          currentStationId = "";
+        // Generación de Ruido Rosa/Blanco con fluctuaciones analógicas
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          output[i] = (b0 + b1 + b2 + white * 0.1) * 0.12;
         }
 
-      } catch (e) {}
+        const whiteNoiseSource = audioContext.createBufferSource();
+        whiteNoiseSource.buffer = buffer;
+        whiteNoiseSource.loop = true;
+
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = (currentProximityVol / 100) * 0.35;
+
+        whiteNoiseSource.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        whiteNoiseSource.start();
+        staticOscillatorNode = { source: whiteNoiseSource, gain: gainNode };
+      } catch (e) {
+        console.warn("No se pudo iniciar el sintetizador WebAudio:", e);
+      }
     }
 
-    setInterval(pollStatus, 450);
+    function stopAnalogStaticNoise() {
+      if (staticOscillatorNode) {
+        try {
+          staticOscillatorNode.source.stop();
+          staticOscillatorNode.source.disconnect();
+        } catch (e) {}
+        staticOscillatorNode = null;
+      }
+    }
+
+    // ==========================================
+    //   CONTROL DE VOLUMEN POR PROXIMIDAD
+    // ==========================================
+    function applyProximityVolume(volumePercent) {
+      currentProximityVol = Math.max(0, Math.min(100, volumePercent));
+      volIndicator.textContent = `Volumen de Proximidad: ${currentProximityVol}%`;
+
+      const normalizedVol = currentProximityVol / 100;
+
+      // 1. CarDash
+      if (cardashYt && typeof cardashYt.setVolume === "function") {
+        cardashYt.setVolume(currentProximityVol);
+      }
+
+      // 2. Radio YouTube
+      if (radioYt && typeof radioYt.setVolume === "function") {
+        radioYt.setVolume(currentProximityVol);
+      }
+
+      // 3. Radio HTML5 / HLS
+      html5Audio.volume = normalizedVol;
+
+      // 4. Estática
+      if (staticOscillatorNode && staticOscillatorNode.gain) {
+        staticOscillatorNode.gain.gain.value = normalizedVol * 0.35;
+      }
+    }
   </script>
 </body>
 </html>
