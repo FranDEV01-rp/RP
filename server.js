@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const https = require('https');
-const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,229 +12,151 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const sseClients = new Map();
 
-// DIAL COMPLETO DE EMISORAS ARGENTINAS CON SERVIDORES DE AUDIO DIRECTOS
+// DIAL ARGENTINO OFICIAL CON ENLACES HTTPS VERIFICADOS
 const STATIONS = {
+  // 1. ASPEN (La que ya te funcionaba)
   "caba_aspen": {
     name: "Aspen 102.3",
     dial: "102.3 FM",
     city: "Buenos Aires",
-    urls: [
+    streams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN_SC"
     ]
   },
-  "ros_vida": {
-    name: "FM Vida Rosario 97.9",
-    dial: "97.9 FM",
-    city: "Rosario, Santa Fe",
-    urls: [
-      "http://stream.rosario3.com/fmvida.mp3",
-      "https://stream.zeno.fm/9uvrtub5puzuv",
-      "http://streaming.rosario3.com:8000/fmvida"
-    ]
-  },
+  // 2. URBANA PLAY 104.3 (Enlace oficial directo de audio, sin videos de YouTube)
   "caba_urbanaplay": {
     name: "Urbana Play 104.3",
     dial: "104.3 FM",
     city: "Buenos Aires",
-    urls: [
+    streams: [
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAY_SC",
       "https://urbanaplay.stream.mediasector.es/urbanaplay-ba.mp3",
-      "http://icecast.urbanaplayfm.com/urbanaplay.mp3",
       "https://stream.zeno.fm/f8y0u69u21zuv"
     ]
   },
+  // 3. FM VIDA ROSARIO 97.9 (CDN HTTPS verificado de Rosario)
+  "ros_vida": {
+    name: "FM Vida Rosario 97.9",
+    dial: "97.9 FM",
+    city: "Rosario, Santa Fe",
+    streams: [
+      "https://stream.zeno.fm/9uvrtub5puzuv",
+      "https://streaming.rosario3.com/fmvida/live/playlist.m3u8",
+      "https://stream.zeno.fm/s4k8yv405qzuv"
+    ]
+  },
+  // 4. FM 100.3 ROSARIO (Boing)
   "ros_1003": {
     name: "FM 100.3 Rosario (Boing)",
     dial: "100.3 FM",
     city: "Rosario, Santa Fe",
-    urls: [
-      "http://stream.boing973.com/boing",
-      "https://stream.zeno.fm/6y2x37n5t7zuv"
+    streams: [
+      "https://stream.zeno.fm/6y2x37n5t7zuv",
+      "https://streaming.redboing.com/boing"
     ]
   },
+  // 5. LA 100 99.9 (Enlace oficial StreamTheWorld, igual a Aspen)
   "caba_la100": {
     name: "La 100 99.9",
     dial: "99.9 FM",
     city: "Buenos Aires",
-    urls: [
-      "https://stream.cienradios.com/la100.mp3",
-      "https://la100.cienradios.com/la100.mp3"
+    streams: [
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/LA_100_SC"
     ]
   },
+  // 6. RADIO MITRE AM 790 (StreamTheWorld)
   "caba_mitre": {
     name: "Radio Mitre AM 790",
     dial: "790 AM",
     city: "Buenos Aires",
-    urls: [
-      "https://stream.cienradios.com/mitremp3.mp3",
-      "https://mitremp3.cienradios.com/mitremp3.mp3"
+    streams: [
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE_AM790_SC"
     ]
   },
+  // 7. LOS 40 ARGENTINA 105.5 (StreamTheWorld)
   "caba_los40": {
     name: "Los 40 105.5",
     dial: "105.5 FM",
     city: "Buenos Aires",
-    urls: [
+    streams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARGENTINA_SC"
     ]
   },
+  // 8. RADIO DISNEY 94.3 (StreamTheWorld)
   "caba_disney": {
     name: "Radio Disney 94.3",
     dial: "94.3 FM",
     city: "Buenos Aires",
-    urls: [
+    streams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC"
     ]
   },
+  // 9. CADENA 3 ARGENTINA (Córdoba / Nacional - StreamTheWorld)
   "cba_cadena3": {
     name: "Cadena 3 100.9",
     dial: "100.9 FM / 700 AM",
     city: "Córdoba",
-    urls: [
-      "https://cadena3.streamguys1.com/cadena3",
+    streams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA3_SC"
     ]
   },
-  "caba_pop": {
-    name: "Pop Radio 101.5",
-    dial: "101.5 FM",
-    city: "Buenos Aires",
-    urls: [
-      "https://pop.streamindalo.com.ar/pop.mp3",
-      "http://stream.indalo.com.ar/pop.mp3"
-    ]
-  },
-  "caba_mega": {
-    name: "Mega 98.3",
-    dial: "98.3 FM",
-    city: "Buenos Aires",
-    urls: [
-      "https://mega.streamindalo.com.ar/mega.mp3",
-      "http://stream.indalo.com.ar/mega.mp3"
-    ]
-  },
+  // 10. RADIO CONTINENTAL AM 590 (StreamTheWorld)
   "caba_continental": {
     name: "Radio Continental AM 590",
     dial: "590 AM",
     city: "Buenos Aires",
-    urls: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC",
-      "https://stream.zeno.fm/4w9w03hn01zuv"
+    streams: [
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/CONTINENTAL_SC"
     ]
   },
+  // 11. RADIO RIVADAVIA AM 630 (StreamTheWorld)
   "caba_rivadavia": {
     name: "Radio Rivadavia AM 630",
     dial: "630 AM",
     city: "Buenos Aires",
-    urls: [
-      "https://stream.zeno.fm/k2k0mwhm5rhvv",
+    streams: [
       "https://playerservices.streamtheworld.com/api/livestream-redirect/RIVADAVIA_SC"
     ]
   },
+  // 12. POP RADIO 101.5 (Indalo CDN)
+  "caba_pop": {
+    name: "Pop Radio 101.5",
+    dial: "101.5 FM",
+    city: "Buenos Aires",
+    streams: [
+      "https://pop.streamindalo.com.ar/pop.mp3"
+    ]
+  },
+  // 13. MEGA 98.3 (Puro Rock Nacional)
+  "caba_mega": {
+    name: "Mega 98.3",
+    dial: "98.3 FM",
+    city: "Buenos Aires",
+    streams: [
+      "https://mega.streamindalo.com.ar/mega.mp3"
+    ]
+  },
+  // 14. RADIO VALE 97.5 (Indalo CDN)
   "caba_vale": {
     name: "Radio Vale 97.5",
     dial: "97.5 FM",
     city: "Buenos Aires",
-    urls: [
+    streams: [
       "https://vale.streamindalo.com.ar/vale.mp3"
     ]
   },
+  // 15. RADIO 10 AM 710 (Indalo CDN)
   "caba_radio10": {
     name: "Radio 10 AM 710",
     dial: "710 AM",
     city: "Buenos Aires",
-    urls: [
+    streams: [
       "https://radio10.streamindalo.com.ar/radio10.mp3"
     ]
   }
 };
 
-// Conector de audio universal: conecta a servidores HTTP o HTTPS, resuelve cabeceras ICY y emite audio limpio
-function pipeAudioStream(urls, index, req, res, redirectLimit = 0) {
-  if (index >= urls.length || redirectLimit > 5) {
-    if (!res.headersSent) {
-      res.status(502).send("Todos los servidores de la emisora están desconectados");
-    }
-    return;
-  }
-
-  const currentUrl = urls[index];
-  let parsedUrl;
-  try {
-    parsedUrl = new URL(currentUrl);
-  } catch (e) {
-    return pipeAudioStream(urls, index + 1, req, res, 0);
-  }
-
-  const client = parsedUrl.protocol === 'https:' ? https : http;
-  const options = {
-    hostname: parsedUrl.hostname,
-    port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
-    path: parsedUrl.pathname + parsedUrl.search,
-    method: 'GET',
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0.0.0 Safari/537.36',
-      'Accept': '*/*',
-      'Icy-MetaData': '0'
-    },
-    insecureHTTPParser: true, // Crucial para admitir respuestas ICY 200 OK de FM Vida y radios argentinas
-    rejectUnauthorized: false,
-    timeout: 7000
-  };
-
-  const proxyReq = client.request(options, (upstreamRes) => {
-    // Manejo automático de redirecciones HTTP (301, 302, 307)
-    if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400 && upstreamRes.headers.location) {
-      let nextUrl = upstreamRes.headers.location;
-      if (!nextUrl.startsWith('http')) {
-        nextUrl = new URL(nextUrl, currentUrl).href;
-      }
-      proxyReq.destroy();
-      return pipeAudioStream([nextUrl, ...urls.slice(index + 1)], 0, req, res, redirectLimit + 1);
-    }
-
-    if (upstreamRes.statusCode !== 200 && upstreamRes.statusCode !== 206) {
-      proxyReq.destroy();
-      return pipeAudioStream(urls, index + 1, req, res, 0);
-    }
-
-    // Cabeceras HTTPS nativas para evitar el bloqueo del navegador
-    res.writeHead(200, {
-      'Content-Type': upstreamRes.headers['content-type'] || 'audio/mpeg',
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-cache, no-store',
-      'Connection': 'keep-alive'
-    });
-
-    upstreamRes.pipe(res);
-
-    req.on('close', () => {
-      proxyReq.destroy();
-    });
-  });
-
-  proxyReq.on('error', () => {
-    pipeAudioStream(urls, index + 1, req, res, 0);
-  });
-
-  proxyReq.on('timeout', () => {
-    proxyReq.destroy();
-    pipeAudioStream(urls, index + 1, req, res, 0);
-  });
-
-  proxyReq.end();
-}
-
-// Endpoint de Streaming Seguro a través de Render
-app.get('/api/stream-proxy', (req, res) => {
-  const station = STATIONS[req.query.id];
-  if (!station || !station.urls || station.urls.length === 0) {
-    return res.status(404).send("Emisora no registrada");
-  }
-
-  pipeAudioStream(station.urls, 0, req, res, 0);
-});
-
-// Endpoint de información para la interfaz
+// Endpoint que devuelve los enlaces directos de la emisora
 app.get('/api/station-info', (req, res) => {
   const station = STATIONS[req.query.id];
   if (!station) return res.status(404).json({ error: "No encontrada" });
@@ -246,11 +166,11 @@ app.get('/api/station-info', (req, res) => {
     name: station.name,
     dial: station.dial,
     city: station.city,
-    proxyUrl: `/api/stream-proxy?id=${req.query.id}&t=${Date.now()}`
+    streams: station.streams
   });
 });
 
-// SSE para comandos en tiempo real desde el vehículo
+// SSE para sincronizar con el navegador del conductor
 app.get('/events', (req, res) => {
   const userId = req.query.userId;
   if (!userId) return res.status(400).send("Falta userId");
@@ -269,7 +189,7 @@ app.get('/events', (req, res) => {
   });
 });
 
-// Control remoto invocado desde Roblox
+// Control remoto desde Roblox
 app.post('/api/control', (req, res) => {
   if (req.headers['x-auth-token'] !== MASTER_KEY) return res.status(403).json({ error: "No autorizado" });
   const { userId, system, action, data } = req.body;
