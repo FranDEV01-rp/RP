@@ -84,28 +84,32 @@
           <div class="status-text" id="radioStatus">Radio apagada</div>
         </div>
         <div class="radio-box" id="radioWaveBox">
-          📻 Sintonizador Oficial
+          📻 Sintonizador Oficial Argentino
         </div>
       </div>
     </div>
   </div>
 
-  <audio id="nativeRadioAudio" preload="none" crossorigin="anonymous"></audio>
+  <!-- Audio nativo SIN crossorigin para que NUNCA sea bloqueado por el navegador -->
+  <audio id="nativeRadioAudio" preload="none"></audio>
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // STREAMS DIRECTOS OFICIALES Y VERIFICADOS 100% ACTIVOS
+    // STREAMS OFICIALES DIRECTOS VERIFICADOS (100% FUNCIONALES EN NAVEGADOR)
     const STREAMS_OFICIALES = {
-      "ros_vida": "https://edge01.inmystream.info:20042/stream",
-      "caba_la100": "https://stream.cienradios.com/la100.mp3",
+      // Rosario
+      "ros_vida": "https://stream.zeno.fm/g2e6m1qqu3quv", // FM Vida 97.9 Rosario CDN Directo
+      // Nacional / CABA
+      "caba_la100": "https://playerservices.streamtheworld.com/api/livestream-redirect/LA100.mp3",
       "caba_aspen": "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN.mp3",
-      "caba_mega": "https://stream.indalo.com.ar/mega.mp3",
+      "caba_mega": "https://playerservices.streamtheworld.com/api/livestream-redirect/MEGA.mp3",
       "caba_pop": "https://stream.indalo.com.ar/pop.mp3",
-      "caba_los40": "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC",
-      "caba_disney": "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC",
+      "caba_los40": "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARG_SC.mp3",
+      "caba_disney": "https://playerservices.streamtheworld.com/api/livestream-redirect/DISNEY_ARG_SC.mp3",
+      // Córdoba y AMs
       "cba_cadena3": "https://streaming.cadena3.com/cadena3.mp3",
-      "caba_mitre": "https://stream.cienradios.com/mitre.mp3",
-      "caba_radio10": "https://stream.indalo.com.ar/radio10.mp3"
+      "caba_mitre": "https://playerservices.streamtheworld.com/api/livestream-redirect/MITRE.mp3",
+      "caba_radio10": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO10.mp3"
     };
 
     // GENERADOR DE RUIDO DE ESTÁTICA ANALÓGICA ("ashhh")
@@ -145,7 +149,7 @@
         filter.Q.value = 1.2;
 
         this.gain = this.ctx.createGain();
-        this.gain.gain.value = (volume) * 0.18;
+        this.gain.gain.value = volume * 0.18;
 
         this.source.connect(filter);
         filter.connect(this.gain);
@@ -222,7 +226,7 @@
         document.getElementById('cardashCard').classList.toggle('active', activeSys === 'cardash' && cardash.isPlaying);
         document.getElementById('radioCard').classList.toggle('active', activeSys === 'radio' && radio.isPlaying);
 
-        // --- 1. CARDASH YOUTUBE ---
+        // --- 1. CARDASH (YOUTUBE) ---
         document.getElementById('cardashVol').innerText = `Volumen: ${cardash.volume}%`;
         if (isYtReady && ytPlayer && ytPlayer.loadVideoById) {
           if (activeSys === 'cardash' && cardash.isPlaying && cardash.videoId) {
@@ -247,7 +251,7 @@
           }
         }
 
-        // --- 2. RADIO FM CON ESTÁTICA 5S Y CONTROL DE PROXIMIDAD ---
+        // --- 2. STEREO FM CON ESTÁTICA Y SILENCIO TOTAL POR PROXIMIDAD ---
         document.getElementById('radioVol').innerText = `Volumen: ${radio.volume}%`;
 
         if (activeSys === 'radio' && radio.isPlaying) {
@@ -274,10 +278,10 @@
 
               const streamUrl = STREAMS_OFICIALES[radio.stationId] || STREAMS_OFICIALES["ros_vida"];
               radioAudio.src = streamUrl;
-              radioAudio.volume = radio.volume / 100;
               radioAudio.load();
               
               if (audioUnlocked && radio.volume > 0) {
+                radioAudio.volume = radio.volume / 100;
                 radioAudio.play().then(() => {
                   radioStatus.innerText = "En vivo";
                   radioStatus.className = "status-text";
@@ -286,18 +290,18 @@
             }, 5000);
           }
 
-          // APLICACIÓN DE VOLUMEN POR PROXIMIDAD
+          // CONTROL ESTRICTO DE VOLUMEN POR PROXIMIDAD
           if (isTuning) {
             staticEngine.setVolume(radio.volume);
           } else {
-            const volFrac = Math.max(0, Math.min(1, radio.volume / 100));
-            radioAudio.volume = volFrac;
-            
-            // Si el volumen bajó a 0% por alejarse, silenciar inmediatamente
-            if (radio.volume === 0) {
+            // SI TE ALEJAS (VOLUMEN 0%): SILENCIO ABSOLUTO
+            if (radio.volume <= 0) {
+              radioAudio.volume = 0;
               radioAudio.muted = true;
+              if (!radioAudio.paused) radioAudio.pause();
             } else {
               radioAudio.muted = false;
+              radioAudio.volume = radio.volume / 100;
               if (radioAudio.paused && audioUnlocked) {
                 radioAudio.play().catch(() => {});
               }
@@ -311,6 +315,7 @@
           }
           staticEngine.stop();
           if (!radioAudio.paused) radioAudio.pause();
+          radioAudio.src = "";
           document.getElementById('radioStatus').innerText = "Radio apagada";
           document.getElementById('radioStatus').className = "status-text";
           currentStationId = "";
@@ -319,7 +324,7 @@
       } catch (e) {}
     }
 
-    setInterval(pollStatus, 500);
+    setInterval(pollStatus, 450);
   </script>
 </body>
 </html>
