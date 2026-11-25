@@ -14,14 +14,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const sseClients = new Map();
 
-// DIAL DE EMISORAS ARGENTINAS (Servidores de audio oficiales)
+// Catálogo maestro de emisoras argentinas con CDNs oficiales directos en HTTPS
 const STATIONS = {
   "caba_aspen": {
     name: "Aspen 102.3",
     dial: "102.3 FM",
     city: "Buenos Aires",
     urls: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN_SC"
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPEN_SC",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/ASPENAAC_SC"
     ]
   },
   "ros_vida": {
@@ -30,7 +31,7 @@ const STATIONS = {
     city: "Rosario, Santa Fe",
     urls: [
       "https://stream.zeno.fm/9uvrtub5puzuv",
-      "http://streaming.rosario3.com:8000/fmvida",
+      "https://stream.zenolive.com/9uvrtub5puzuv",
       "https://stream.zeno.fm/s4k8yv405qzuv"
     ]
   },
@@ -41,7 +42,7 @@ const STATIONS = {
     urls: [
       "https://urbanaplay.stream.mediasector.es/urbanaplay-ba.mp3",
       "https://stream.zeno.fm/f8y0u69u21zuv",
-      "http://icecast.urbanaplayfm.com/urbanaplay.mp3"
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/URBANAPLAY_SC"
     ]
   },
   "ros_1003": {
@@ -50,7 +51,7 @@ const STATIONS = {
     city: "Rosario, Santa Fe",
     urls: [
       "https://stream.zeno.fm/6y2x37n5t7zuv",
-      "http://stream.boing973.com/boing"
+      "https://stream.zenolive.com/6y2x37n5t7zuv"
     ]
   },
   "caba_la100": {
@@ -76,7 +77,8 @@ const STATIONS = {
     dial: "105.5 FM",
     city: "Buenos Aires",
     urls: [
-      "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARGENTINA_SC"
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARGENTINA_SC",
+      "https://playerservices.streamtheworld.com/api/livestream-redirect/LOS40_ARGENTINAAAC_SC"
     ]
   },
   "caba_disney": {
@@ -90,7 +92,7 @@ const STATIONS = {
   "cba_cadena3": {
     name: "Cadena 3 100.9",
     dial: "100.9 FM / 700 AM",
-    city: "Córdoba",
+    city: "Córdoba / Nacional",
     urls: [
       "https://cadena3.streamguys1.com/cadena3",
       "https://playerservices.streamtheworld.com/api/livestream-redirect/CADENA3_SC"
@@ -101,17 +103,15 @@ const STATIONS = {
     dial: "101.5 FM",
     city: "Buenos Aires",
     urls: [
-      "https://pop.streamindalo.com.ar/pop.mp3",
-      "http://stream.indalo.com.ar/pop.mp3"
+      "https://pop.streamindalo.com.ar/pop.mp3"
     ]
   },
   "caba_mega": {
-    name: "Mega 98.3",
+    name: "Mega 98.3 (Puro Rock)",
     dial: "98.3 FM",
     city: "Buenos Aires",
     urls: [
-      "https://mega.streamindalo.com.ar/mega.mp3",
-      "http://stream.indalo.com.ar/mega.mp3"
+      "https://mega.streamindalo.com.ar/mega.mp3"
     ]
   },
   "caba_continental": {
@@ -150,12 +150,15 @@ const STATIONS = {
   }
 };
 
-// Proxy de audio: conecta a servidores HTTP/HTTPS, sigue redirecciones y emite MP3 seguro
+// Endpoint que entrega el catálogo con las URLs directas al cliente
+app.get('/api/stations', (req, res) => {
+  res.json(STATIONS);
+});
+
+// Proxy de respaldo robusto (sin cortes por inactividad)
 function proxyRadioStream(candidates, index, req, res, hops = 0) {
   if (index >= candidates.length || hops > 5) {
-    if (!res.headersSent) {
-      res.status(502).send("Todos los servidores de la emisora fallaron");
-    }
+    if (!res.headersSent) res.status(502).send("Todos los servidores de la emisora fallaron");
     return;
   }
 
@@ -179,17 +182,14 @@ function proxyRadioStream(candidates, index, req, res, hops = 0) {
       'Icy-MetaData': '0'
     },
     insecureHTTPParser: true,
-    rejectUnauthorized: false,
-    timeout: 6000
+    rejectUnauthorized: false
   };
 
   const upstreamReq = transport.request(options, (upstreamRes) => {
-    // Manejo de redirecciones 301, 302, 307
+    // Manejo de redirecciones 301/302/307
     if (upstreamRes.statusCode >= 300 && upstreamRes.statusCode < 400 && upstreamRes.headers.location) {
       let nextUrl = upstreamRes.headers.location;
-      if (!nextUrl.startsWith('http')) {
-        nextUrl = new URL(nextUrl, targetUrl).href;
-      }
+      if (!nextUrl.startsWith('http')) nextUrl = new URL(nextUrl, targetUrl).href;
       upstreamReq.destroy();
       return proxyRadioStream([nextUrl, ...candidates.slice(index + 1)], 0, req, res, hops + 1);
     }
@@ -199,13 +199,17 @@ function proxyRadioStream(candidates, index, req, res, hops = 0) {
       return proxyRadioStream(candidates, index + 1, req, res, 0);
     }
 
-    // Cabeceras limpias que el navegador de la PC reproduce al 100%
+    // Cabeceras correctas para streaming continuo sin corte
     res.writeHead(200, {
       'Content-Type': upstreamRes.headers['content-type'] || 'audio/mpeg',
       'Access-Control-Allow-Origin': '*',
       'Cache-Control': 'no-cache, no-store',
       'Connection': 'keep-alive'
     });
+
+    // Desactivar timeouts en el socket para que NUNCA se corte la música
+    if (req.socket) req.socket.setTimeout(0);
+    if (upstreamRes.socket) upstreamRes.socket.setTimeout(0);
 
     upstreamRes.pipe(res);
 
@@ -214,42 +218,28 @@ function proxyRadioStream(candidates, index, req, res, hops = 0) {
     });
   });
 
-  upstreamReq.on('error', () => {
+  // Timeout solo para conectar inicialmente (10s)
+  upstreamReq.setTimeout(10000, () => {
+    upstreamReq.destroy();
     proxyRadioStream(candidates, index + 1, req, res, 0);
   });
 
-  upstreamReq.on('timeout', () => {
-    upstreamReq.destroy();
+  upstreamReq.on('error', () => {
     proxyRadioStream(candidates, index + 1, req, res, 0);
   });
 
   upstreamReq.end();
 }
 
-// Endpoint de reproducción de la radio a través del túnel seguro de Render
 app.get('/api/radio-stream', (req, res) => {
   const station = STATIONS[req.query.id];
   if (!station || !station.urls || station.urls.length === 0) {
-    return res.status(404).send("Emisora no registrada");
+    return res.status(404).send("Emisora no encontrada");
   }
   proxyRadioStream(station.urls, 0, req, res, 0);
 });
 
-// Endpoint de información para la interfaz
-app.get('/api/station-info', (req, res) => {
-  const station = STATIONS[req.query.id];
-  if (!station) return res.status(404).json({ error: "No encontrada" });
-
-  res.json({
-    stationId: req.query.id,
-    name: station.name,
-    dial: station.dial,
-    city: station.city,
-    directBackup: station.urls[0]
-  });
-});
-
-// SSE para sincronizar con Roblox
+// Canal de eventos en tiempo real con Roblox (SSE)
 app.get('/events', (req, res) => {
   const userId = req.query.userId;
   if (!userId) return res.status(400).send("Falta userId");
@@ -261,24 +251,36 @@ app.get('/events', (req, res) => {
 
   sseClients.set(String(userId), res);
 
-  const heartbeat = setInterval(() => res.write(': keepalive\n\n'), 25000);
+  // Heartbeat para que Render no cierre la conexión
+  const heartbeat = setInterval(() => {
+    res.write(': keepalive\n\n');
+  }, 20000);
+
   req.on('close', () => {
     clearInterval(heartbeat);
     sseClients.delete(String(userId));
   });
 });
 
-// Endpoint de control desde Roblox
+// Recepción de comandos de Roblox
 app.post('/api/control', (req, res) => {
-  if (req.headers['x-auth-token'] !== MASTER_KEY) return res.status(403).json({ error: "No autorizado" });
+  if (req.headers['x-auth-token'] !== MASTER_KEY) {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+
   const { userId, system, action, data } = req.body;
-  if (!userId || !system || !action) return res.status(400).json({ error: "Faltan datos" });
+  if (!userId || !system || !action) {
+    return res.status(400).json({ error: "Datos incompletos" });
+  }
 
   const client = sseClients.get(String(userId));
-  if (client) client.write(`data: ${JSON.stringify({ system, action, data })}\n\n`);
+  if (client) {
+    client.write(`data: ${JSON.stringify({ system, action, data })}\n\n`);
+  }
+
   res.json({ success: true });
 });
 
 app.listen(PORT, () => {
-  console.log(`Receptor Maestro ejecutándose en puerto ${PORT}`);
+  console.log(`Receptor Maestro ejecutándose en el puerto ${PORT}`);
 });
