@@ -7,43 +7,28 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-let clients = {};
+// Guarda la última orden de cada jugador
+let userState = {};
 
+// Recibe la orden de Roblox
 app.post('/api/control', (req, res) => {
     const { userId, action, data } = req.body;
     console.log(`[Roblox -> Web] Usuario: ${userId} | Acción: ${action} | Datos: ${data}`);
 
-    if (clients[userId]) {
-        clients[userId].forEach(client => {
-            client.res.write(`data: ${JSON.stringify({ action, data })}\n\n`);
-        });
-    }
+    userState[userId] = {
+        action: action,
+        data: data,
+        timestamp: Date.now()
+    };
+
     res.json({ success: true });
 });
 
-app.get('/api/stream/:userId', (req, res) => {
+// La página web consulta aquí cada segundo (INFALIBLE)
+app.get('/api/status/:userId', (req, res) => {
     const userId = req.params.userId;
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    
-    // Forzar el envío inmediato de datos para que Render no congele la conexión
-    res.write('data: {"action":"conectado_exitoso"}\n\n');
-
-    if (!clients[userId]) clients[userId] = [];
-    const clientObj = { id: Date.now(), res };
-    clients[userId].push(clientObj);
-
-    // Mantener la conexión despierta cada 25 segundos
-    const keepAlive = setInterval(() => {
-        res.write(': ping\n\n');
-    }, 25000);
-
-    req.on('close', () => {
-        clearInterval(keepAlive);
-        clients[userId] = clients[userId].filter(c => c.id !== clientObj.id);
-    });
+    const state = userState[userId] || { action: 'none', data: '', timestamp: 0 };
+    res.json(state);
 });
 
 const PORT = process.env.PORT || 3000;
