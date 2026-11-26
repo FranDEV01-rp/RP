@@ -2,73 +2,44 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Receptor Dual - CarDash & Stereo FM Argentina</title>
+  <title>CarDash Multimedia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background-color: #080c14;
+      background-color: #0b0f19;
       color: #f1f5f9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       min-height: 100vh;
       padding: 20px;
     }
-    .header-box { text-align: center; margin-bottom: 20px; max-width: 720px; width: 100%; }
-    h1 { font-size: 1.5rem; color: #38bdf8; letter-spacing: 1px; }
+    .panel {
+      background: #131d31;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 680px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+    h1 { font-size: 1.6rem; color: #38bdf8; margin-bottom: 6px; }
     .status-badge {
       display: inline-block;
-      margin-top: 8px;
-      padding: 4px 12px;
+      margin-bottom: 20px;
+      padding: 4px 14px;
       border-radius: 20px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       font-weight: 600;
       background: #1e293b;
       color: #94a3b8;
     }
     .status-badge.online { background: #065f46; color: #34d399; }
-    
-    .panel {
-      background: #101726;
-      border: 1px solid #1e293b;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 720px;
-      padding: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    }
-    .indicator-box {
-      background: #050811;
-      border-radius: 8px;
-      padding: 15px;
-      border: 1px solid #1e293b;
-      margin-bottom: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .indicator-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
-    .indicator-val { font-weight: bold; color: #38bdf8; }
-    .indicator-dial { font-size: 1.4rem; color: #f59e0b; font-family: monospace; font-weight: bold; }
-    
-    #yt-wrapper {
-      position: relative;
-      width: 100%;
-      padding-bottom: 56.25%;
-      height: 0;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #000;
-      margin-bottom: 15px;
-    }
-    #yt-wrapper iframe {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%; border: 0;
-    }
-    
-    .btn-init {
+    .btn-unlock {
       width: 100%;
       background: #2563eb;
       color: white;
@@ -78,85 +49,70 @@
       font-size: 1rem;
       font-weight: bold;
       cursor: pointer;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
       transition: background 0.2s;
     }
-    .btn-init:hover { background: #1d4ed8; }
-    .btn-init.connected { background: #059669; }
-
-    .stations-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 10px;
-      max-height: 280px;
-      overflow-y: auto;
-      padding-right: 5px;
+    .btn-unlock:hover { background: #1d4ed8; }
+    .btn-unlock.ready { background: #059669; }
+    #player-wrapper {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%;
+      height: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+      margin-bottom: 20px;
+      border: 1px solid #1e293b;
     }
-    .station-btn {
-      background: #1e293b;
-      border: 1px solid #334155;
-      color: #e2e8f0;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 0.85rem;
+    #player-wrapper iframe {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%; border: 0;
+    }
+    .info-box {
+      background: #070a13;
+      border-radius: 8px;
+      padding: 15px;
+      border: 1px solid #1e293b;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       text-align: left;
-      cursor: pointer;
-      transition: all 0.2s;
+      font-size: 0.95rem;
     }
-    .station-btn:hover { background: #334155; border-color: #38bdf8; }
-    .station-btn.active {
-      background: #0284c7;
-      border-color: #38bdf8;
-      color: #fff;
-    }
-    .station-btn .s-dial { font-weight: bold; color: #f59e0b; display: block; }
-    .station-btn.active .s-dial { color: #fff; }
+    .info-row { display: flex; justify-content: space-between; }
+    .info-val { font-weight: bold; color: #38bdf8; }
   </style>
 </head>
 <body>
 
-  <div class="header-box">
-    <h1>RECEPTOR MULTIMEDIA VEHICULAR</h1>
-    <div id="conn-badge" class="status-badge">Conectando con el vehículo...</div>
-  </div>
-
   <div class="panel">
-    <button id="btn-audio-init" class="btn-init" onclick="unlockAudioSystem()">
+    <h1>CARDASH MULTIMEDIA</h1>
+    <div id="conn-status" class="status-badge">Conectando con el vehículo...</div>
+
+    <button id="btn-audio" class="btn-unlock" onclick="unlockAudio()">
       🔊 PULSAR AQUÍ PARA HABILITAR AUDIO
     </button>
 
-    <div class="indicator-box">
-      <div class="indicator-row">
-        <span>SISTEMA ACTIVO:</span>
-        <span id="txt-system" class="indicator-val">NINGUNO (STANDBY)</span>
-      </div>
-      <div class="indicator-row">
-        <span>DIAL / CONTENIDO:</span>
-        <span id="txt-dial" class="indicator-dial">---.-- MHz</span>
-      </div>
-      <div class="indicator-row">
+    <div id="player-wrapper">
+      <div id="yt-player"></div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-row">
         <span>ESTADO:</span>
-        <span id="txt-detail" class="indicator-val">Esperando comando...</span>
+        <span id="txt-state" class="info-val">En espera de pista</span>
       </div>
-      <div class="indicator-row">
-        <span>VOLUMEN EFECTIVO:</span>
-        <span id="txt-vol" class="indicator-val">100%</span>
+      <div class="info-row">
+        <span>TRACK ACTUAL:</span>
+        <span id="txt-track" class="info-val">Ninguno</span>
+      </div>
+      <div class="info-row">
+        <span>VOLUMEN (PROXIMIDAD):</span>
+        <span id="txt-vol" class="info-val">100%</span>
       </div>
     </div>
-
-    <!-- YouTube para CarDash Multimedia -->
-    <div id="yt-wrapper" style="display: none;">
-      <div id="player"></div>
-    </div>
-
-    <h3 style="font-size: 0.9rem; margin-bottom: 10px; color: #94a3b8;">
-      DIALES FM/AM ARGENTINA (PRUEBA MANUAL / ROBLOX)
-    </h3>
-    <div id="stations-list" class="stations-grid"></div>
   </div>
-
-  <!-- Elemento de audio nativo visible para el navegador -->
-  <audio id="native-radio-audio" preload="auto" style="display: none;"></audio>
 
   <script src="https://www.youtube.com/iframe_api"></script>
 
@@ -164,271 +120,121 @@
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('userId') || "3618165542";
 
-    let activeSystem = null; // "cardash" | "radio"
-    let currentStationId = null;
-    let targetVolume = 1.0;
-    let stationsCatalog = {};
-    let isTuningStatic = false;
-    let tuningTimer = null;
-
-    const radioAudio = document.getElementById('native-radio-audio');
-
-    // Generador de estática analógica de 5 segundos con Web Audio API
-    let audioCtx = null;
-    let staticSourceNode = null;
-    let staticGainNode = null;
-
-    function initAudioContext() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
-
-    function unlockAudioSystem() {
-      initAudioContext();
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      g.gain.value = 0.001;
-      osc.connect(g);
-      g.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.05);
-
-      const btn = document.getElementById('btn-audio-init');
-      btn.innerText = "✓ AUDIO HABILITADO CORRECTAMENTE";
-      btn.classList.add('connected');
-    }
-
-    function startStaticNoise() {
-      initAudioContext();
-      stopStaticNoise();
-
-      const bufferSize = audioCtx.sampleRate * 2;
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const output = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = (Math.random() * 2 - 1) * 0.45;
-      }
-
-      staticSourceNode = audioCtx.createBufferSource();
-      staticSourceNode.buffer = buffer;
-      staticSourceNode.loop = true;
-
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.value = 1100;
-      filter.Q.value = 0.9;
-
-      staticGainNode = audioCtx.createGain();
-      staticGainNode.gain.setValueAtTime(targetVolume * 0.5, audioCtx.currentTime);
-
-      staticSourceNode.connect(filter);
-      filter.connect(staticGainNode);
-      staticGainNode.connect(audioCtx.destination);
-
-      staticSourceNode.start();
-      isTuningStatic = true;
-    }
-
-    function stopStaticNoise() {
-      if (staticSourceNode) {
-        try {
-          staticSourceNode.stop();
-          staticSourceNode.disconnect();
-        } catch(e) {}
-        staticSourceNode = null;
-      }
-      if (staticGainNode) {
-        try { staticGainNode.disconnect(); } catch(e) {}
-        staticGainNode = null;
-      }
-      isTuningStatic = false;
-    }
-
-    // Cargar catálogo de emisoras
-    async function loadStations() {
-      try {
-        const res = await fetch('/api/stations');
-        stationsCatalog = await res.json();
-        const container = document.getElementById('stations-list');
-        container.innerHTML = "";
-
-        Object.keys(stationsCatalog).forEach(id => {
-          const st = stationsCatalog[id];
-          const btn = document.createElement('button');
-          btn.className = "station-btn";
-          btn.id = "btn-st-" + id;
-          btn.innerHTML = `<span class="s-dial">${st.dial}</span>${st.name}<br><small style="color:#64748b;">${st.city}</small>`;
-          btn.onclick = () => tuneStation(id);
-          container.appendChild(btn);
-        });
-      } catch (err) {
-        console.error("Error cargando estaciones:", err);
-      }
-    }
-    loadStations();
-
-    // Sintonización estricta: 5 segundos de estática y luego transmisión limpia
-    function tuneStation(stationId) {
-      const station = stationsCatalog[stationId];
-      if (!station) return;
-
-      unlockAudioSystem();
-      activeSystem = "radio";
-      currentStationId = stationId;
-
-      // 1. Apagar CarDash (YouTube) de inmediato
-      document.getElementById('yt-wrapper').style.display = 'none';
-      if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
-        ytPlayer.pauseVideo();
-      }
-
-      // 2. Detener cualquier transmisión previa
-      radioAudio.pause();
-      radioAudio.removeAttribute('src');
-
-      // 3. Actualizar interfaz
-      document.getElementById('txt-system').innerText = "STEREO FM ARGENTINA";
-      document.getElementById('txt-dial').innerText = station.dial;
-      document.getElementById('txt-detail').innerText = `Sintonizando analógicamente: ${station.name}...`;
-
-      document.querySelectorAll('.station-btn').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.getElementById('btn-st-' + stationId);
-      if (activeBtn) activeBtn.classList.add('active');
-
-      // 4. Iniciar 5 segundos obligatorios de estática
-      startStaticNoise();
-
-      if (tuningTimer) clearTimeout(tuningTimer);
-
-      // 5. Cargar en segundo plano la transmisión
-      const streamUrl = `/api/radio-stream?id=${stationId}&t=${Date.now()}`;
-      radioAudio.src = streamUrl;
-      radioAudio.volume = 0; // Silenciado mientras suena la estática
-      radioAudio.play().catch(e => console.log("Buffering radio:", e));
-
-      // 6. Al segundo 5 exacto, cortar estática y abrir el audio de la emisora
-      tuningTimer = setTimeout(() => {
-        stopStaticNoise();
-        radioAudio.volume = targetVolume;
-        document.getElementById('txt-detail').innerText = `En vivo: ${station.name} (${station.city})`;
-      }, 5000);
-    }
-
-    // CarDash (YouTube)
     let ytPlayer = null;
-    let ytReady = false;
+    let isReady = false;
+    let currentVolume = 100;
+    let pendingVideoId = null;
+
+    function unlockAudio() {
+      const btn = document.getElementById('btn-audio');
+      btn.innerText = "✓ AUDIO DESBLOQUEADO CORRECTAMENTE";
+      btn.classList.add('ready');
+
+      if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+        const state = ytPlayer.getPlayerState();
+        if (state === 2) {
+          ytPlayer.playVideo();
+        }
+      }
+    }
 
     window.onYouTubeIframeAPIReady = function() {
-      ytPlayer = new YT.Player('player', {
+      ytPlayer = new YT.Player('yt-player', {
         height: '100%',
         width: '100%',
         playerVars: {
-          'autoplay': 0,
+          'autoplay': 1,
           'controls': 1,
           'rel': 0,
-          'modestbranding': 1
+          'modestbranding': 1,
+          'playsinline': 1
         },
         events: {
-          'onReady': () => { ytReady = true; }
+          'onReady': () => {
+            isReady = true;
+            ytPlayer.setVolume(currentVolume);
+            if (pendingVideoId) {
+              ytPlayer.loadVideoById(pendingVideoId);
+              pendingVideoId = null;
+            }
+          },
+          'onStateChange': (event) => {
+            const txtState = document.getElementById('txt-state');
+            if (event.data === YT.PlayerState.PLAYING) {
+              txtState.innerText = "Reproduciendo";
+            } else if (event.data === YT.PlayerState.PAUSED) {
+              txtState.innerText = "Pausado (Mantiene posición)";
+            } else if (event.data === YT.PlayerState.ENDED) {
+              txtState.innerText = "Finalizado";
+            } else if (event.data === YT.PlayerState.BUFFERING) {
+              txtState.innerText = "Cargando...";
+            }
+          }
         }
       });
     };
 
-    function playCarDashTrack(videoId) {
-      unlockAudioSystem();
-      activeSystem = "cardash";
-      stopStaticNoise();
-      if (tuningTimer) clearTimeout(tuningTimer);
-
-      // Apagar radio
-      radioAudio.pause();
-      radioAudio.removeAttribute('src');
-      document.querySelectorAll('.station-btn').forEach(b => b.classList.remove('active'));
-
-      // Encender YouTube
-      document.getElementById('yt-wrapper').style.display = 'block';
-      document.getElementById('txt-system').innerText = "CARDASH MULTIMEDIA";
-      document.getElementById('txt-dial').innerText = "TRACK: " + videoId;
-      document.getElementById('txt-detail').innerText = "Reproduciendo pista multimedia";
-
-      if (ytReady && ytPlayer) {
-        ytPlayer.loadVideoById(videoId);
-        ytPlayer.setVolume(Math.round(targetVolume * 100));
-        ytPlayer.playVideo();
-      }
+    function extractVideoId(input) {
+      if (!input) return "";
+      input = input.trim();
+      const match = input.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+      return match ? match[1] : (input.length === 11 ? input : input);
     }
 
-    // Receptor SSE conectado a Render y Roblox
     const evtSource = new EventSource(`/events?userId=${userId}`);
-    const badge = document.getElementById('conn-badge');
+    const badge = document.getElementById('conn-status');
 
     evtSource.onopen = () => {
-      badge.innerText = `CONECTADO: USER ${userId}`;
+      badge.innerText = `CONECTADO: USER ID ${userId}`;
       badge.classList.add('online');
     };
 
     evtSource.onerror = () => {
-      badge.innerText = "Reconectando con el servidor...";
+      badge.innerText = "Reconectando con el vehículo...";
       badge.classList.remove('online');
     };
 
     evtSource.onmessage = (e) => {
       try {
         const payload = JSON.parse(e.data);
-        const { system, action, data } = payload;
+        const action = payload.action;
+        const data = payload.data;
 
-        // Fading por proximidad
-        if (action === "volume") {
-          const vol = Math.max(0, Math.min(100, parseInt(data) || 0)) / 100;
-          targetVolume = vol;
-          document.getElementById('txt-vol').innerText = `${Math.round(vol * 100)}%`;
+        if (action === "play" || action === "load") {
+          const videoId = extractVideoId(data);
+          document.getElementById('txt-track').innerText = videoId;
+          document.getElementById('txt-state').innerText = "Cargando pista...";
 
-          if (activeSystem === "cardash" && ytPlayer && typeof ytPlayer.setVolume === 'function') {
-            ytPlayer.setVolume(Math.round(vol * 100));
+          if (isReady && ytPlayer) {
+            ytPlayer.loadVideoById(videoId);
+            ytPlayer.setVolume(currentVolume);
+            ytPlayer.playVideo();
+          } else {
+            pendingVideoId = videoId;
           }
-          if (activeSystem === "radio" && !isTuningStatic) {
-            radioAudio.volume = vol;
+        } 
+        else if (action === "pause") {
+          if (isReady && ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
+            ytPlayer.pauseVideo();
+            document.getElementById('txt-state').innerText = "Pausado";
           }
-          if (isTuningStatic && staticGainNode && audioCtx) {
-            staticGainNode.gain.setValueAtTime(vol * 0.5, audioCtx.currentTime);
+        } 
+        else if (action === "resume") {
+          if (isReady && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+            ytPlayer.playVideo();
+            document.getElementById('txt-state').innerText = "Reproduciendo";
           }
-          return;
-        }
-
-        // Control de Radio FM
-        if (system === "radio") {
-          if (action === "play") {
-            tuneStation(data);
-          } else if (action === "pause") {
-            radioAudio.pause();
-            stopStaticNoise();
-            if (tuningTimer) clearTimeout(tuningTimer);
-            document.getElementById('txt-detail').innerText = "Radio en pausa";
-          }
-        }
-
-        // Control de CarDash (YouTube)
-        if (system === "cardash") {
-          if (action === "load" || action === "play") {
-            playCarDashTrack(data);
-          } else if (action === "pause") {
-            if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
-              ytPlayer.pauseVideo();
-            }
-            document.getElementById('txt-detail').innerText = "CarDash pausado";
-          } else if (action === "resume") {
-            if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
-              ytPlayer.playVideo();
-            }
-            document.getElementById('txt-detail').innerText = "CarDash reanudado";
+        } 
+        else if (action === "volume") {
+          const vol = Math.max(0, Math.min(100, parseInt(data) || 0));
+          currentVolume = vol;
+          document.getElementById('txt-vol').innerText = `${vol}%`;
+          if (isReady && ytPlayer && typeof ytPlayer.setVolume === 'function') {
+            ytPlayer.setVolume(vol);
           }
         }
       } catch (err) {
-        console.error("Error al procesar evento SSE:", err);
+        console.error("Error al procesar comando:", err);
       }
     };
   </script>
